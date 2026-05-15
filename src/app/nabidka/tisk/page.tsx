@@ -2,21 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-
-type Polozka = {
-  popis: string
-  mnozstvi: number
-  jednotka: string
-  jednotkova_cena: number
-  typ: string
-  jistota_ceny: 'zelena' | 'oranzova' | 'cervena'
-  zdroj_ceny: string
-}
-
-type Nabidka = {
-  polozky: Polozka[]
-  poznamka?: string
-}
+import type { Nabidka, Profil } from '@/types'
 
 const JISTOTA_LABEL = {
   zelena: '●',
@@ -27,6 +13,7 @@ const JISTOTA_LABEL = {
 export default function TiskPage() {
   const router = useRouter()
   const [nabidka, setNabidka] = useState<Nabidka | null>(null)
+  const [profil, setProfil] = useState<Profil | null>(null)
   const dnes = new Date().toLocaleDateString('cs-CZ')
   const platnostDo = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('cs-CZ')
 
@@ -34,17 +21,19 @@ export default function TiskPage() {
     const raw = sessionStorage.getItem('nabidka')
     if (!raw) { router.push('/'); return }
     setNabidka(JSON.parse(raw))
+
+    const profilRaw = localStorage.getItem('remeslnik_profil')
+    if (profilRaw) setProfil(JSON.parse(profilRaw))
   }, [router])
 
   useEffect(() => {
-    if (nabidka) {
-      setTimeout(() => window.print(), 500)
-    }
+    if (nabidka) setTimeout(() => window.print(), 500)
   }, [nabidka])
 
   if (!nabidka) return null
 
   const celkem = nabidka.polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
+  const dph = profil?.platce_dph ? celkem * 0.21 : null
 
   return (
     <>
@@ -74,9 +63,20 @@ export default function TiskPage() {
           </div>
           <div style={{ textAlign: 'right', color: '#666' }}>
             <div style={{ fontWeight: 600, color: '#111', marginBottom: 2 }}>Dodavatel</div>
-            <div>Jméno / firma</div>
-            <div>IČO: —</div>
-            <div>tel: —</div>
+            {profil ? (
+              <>
+                <div>{profil.jmeno}</div>
+                <div>IČO: {profil.ico}</div>
+                {profil.telefon && <div>{profil.telefon}</div>}
+                {profil.email && <div>{profil.email}</div>}
+                {!profil.platce_dph && <div style={{ marginTop: 4, fontSize: 11 }}>Nejsem plátce DPH</div>}
+              </>
+            ) : (
+              <>
+                <div>Jméno / firma</div>
+                <div>IČO: —</div>
+              </>
+            )}
           </div>
         </div>
 
@@ -110,12 +110,30 @@ export default function TiskPage() {
         </table>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-          <div style={{ borderTop: '2px solid #111', paddingTop: 8, minWidth: 220 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}>
+          <div style={{ borderTop: '2px solid #111', paddingTop: 8, minWidth: 240 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
               <span>Celkem bez DPH</span>
               <span>{celkem.toLocaleString('cs')} Kč</span>
             </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>Platební podmínky: záloha 30 % před zahájením</div>
+            {dph !== null && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4, color: '#666' }}>
+                  <span>DPH 21 %</span>
+                  <span>{dph.toLocaleString('cs', { maximumFractionDigits: 0 })} Kč</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}>
+                  <span>Celkem s DPH</span>
+                  <span>{(celkem + dph).toLocaleString('cs', { maximumFractionDigits: 0 })} Kč</span>
+                </div>
+              </>
+            )}
+            {dph === null && (
+              <div style={{ fontSize: 15, fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Celkem</span>
+                <span>{celkem.toLocaleString('cs')} Kč</span>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#666', marginTop: 6 }}>Platební podmínky: záloha 30 % před zahájením</div>
           </div>
         </div>
 
@@ -126,8 +144,8 @@ export default function TiskPage() {
         )}
 
         <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 32, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
-          <div>Legenda jistoty cen: ● ověřená cena (DEK/Hornbach) &nbsp;&nbsp; ◐ regionální odhad &nbsp;&nbsp; ○ zkontrolujte před odesláním</div>
-          <div style={{ marginTop: 4 }}>Ceny jsou orientační a platné k datu vystavení. Nabídka je platná 14 dní.</div>
+          <div>Legenda: ● ověřená cena (DEK/Hornbach) &nbsp; ◐ regionální odhad &nbsp; ○ zkontrolujte před odesláním</div>
+          <div style={{ marginTop: 4 }}>Nabídka je platná 14 dní od data vystavení. Ceny jsou orientační.</div>
         </div>
       </div>
     </>

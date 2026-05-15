@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 const OBORY = [
@@ -21,6 +21,12 @@ export default function Home() {
   const [vymery, setVymery] = useState('')
   const [loading, setLoading] = useState(false)
   const [chyba, setChyba] = useState('')
+
+  useEffect(() => {
+    if (!localStorage.getItem('remeslnik_profil')) {
+      router.push('/onboarding')
+    }
+  }, [router])
 
   async function odeslat() {
     if (!obor) { setChyba('Vyber obor'); return }
@@ -52,8 +58,18 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Nová nabídka</h1>
-      <p className="text-gray-500 mb-8 text-sm">Popiš zakázku a dostaneš cenovou nabídku během chvilky.</p>
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Nová nabídka</h1>
+          <p className="text-gray-500 text-sm">Popiš zakázku a dostaneš cenovou nabídku během chvilky.</p>
+        </div>
+        <button
+          onClick={() => router.push('/onboarding')}
+          className="text-xs text-gray-400 hover:text-gray-600 mt-1"
+        >
+          Profil
+        </button>
+      </div>
 
       <section className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-3">Tvůj obor</label>
@@ -99,9 +115,7 @@ export default function Home() {
         <p className="text-xs text-gray-400 mt-1">Bez výměr nelze spočítat přesnou nabídku.</p>
       </section>
 
-      {chyba && (
-        <p className="text-red-500 text-sm mb-4">{chyba}</p>
-      )}
+      {chyba && <p className="text-red-500 text-sm mb-4">{chyba}</p>}
 
       <button
         onClick={odeslat}
