@@ -6,6 +6,8 @@ export const OBORY = [
   { id: 'malir', label: 'Malíř' },
   { id: 'podlar', label: 'Podlář' },
   { id: 'elektrikar', label: 'Elektrikář' },
+  { id: 'pokryvac', label: 'Pokrývač' },
+  { id: 'fve', label: 'Fotovoltaika' },
   { id: 'jiny', label: 'Jiný' },
 ] as const
 
@@ -36,3 +38,4 @@ export const JISTOTA_CONFIG = {
 export const PLATNOST_NABIDKY_DNI = 14
 export const SAZBA_DPH = 0.21
 export const ZALOHOVE_PROCENTO = 30
+export const MAX_HISTORIE_NABIDEK = 20

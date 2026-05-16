@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Neplatný formát požadavku' }, { status: 400 })
   }
 
-  const { obor, popis, vymery } = body as Record<string, unknown>
+  const { obor, popis, vymery, misto } = body as Record<string, unknown>
 
   // P36 – whitelist validace oboru (ne jen prázdný string)
   if (typeof obor !== 'string' || !POVOLENE_OBORY.has(obor)) {
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
 
   const cistePopis = sanitizujText(popis, 1000)
   const cisteVymery = sanitizujText(vymery, 500)
+  const cisteMisto = typeof misto === 'string' ? sanitizujText(misto, 100) : ''
 
   if (!cistePopis) {
     return NextResponse.json({ error: 'Popis zakázky nesmí být prázdný' }, { status: 400 })
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(N8N_WEBHOOK, {
       method: 'POST',
       headers: hlavicky,
-      body: JSON.stringify({ obor, popis: cistePopis, vymery: cisteVymery }),
+      body: JSON.stringify({ obor, popis: cistePopis, vymery: cisteVymery, misto: cisteMisto }),
       signal: AbortSignal.timeout(55000),
     })
 

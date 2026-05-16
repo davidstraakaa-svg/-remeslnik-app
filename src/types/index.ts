@@ -12,6 +12,9 @@ export type Polozka = {
 
 export type Nabidka = {
   cislo?: string
+  obor?: string
+  misto?: string
+  datum?: string
   zakaznik?: { jmeno: string; adresa?: string }
   doba_realizace?: string
   polozky: Polozka[]
