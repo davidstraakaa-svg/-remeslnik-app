@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { nactiNabidku, nactiProfil } from '@/lib/storage'
 import { formatujCenu, formatujDatum, pridejDny } from '@/lib/formatters'
-import { JISTOTA_CONFIG, PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
+import { JISTOTA_CONFIG, OBORY, PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
 import type { Nabidka, Profil } from '@/types'
+
+const LABEL_OBORU: Record<string, string> = Object.fromEntries(OBORY.map(o => [o.id, o.label]))
 
 export default function TiskPage() {
   const router = useRouter()
@@ -46,7 +48,7 @@ export default function TiskPage() {
         body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; background: #fff; }
       `}</style>
 
-      <nav className="no-print p-4 bg-gray-100 flex gap-3 items-center">
+      <nav className="no-print p-4 bg-gray-100 flex gap-3 items-center flex-wrap">
         <button
           onClick={() => window.print()}
           className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
@@ -54,11 +56,19 @@ export default function TiskPage() {
           Uložit jako PDF
         </button>
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push('/nabidka')}
           className="bg-white border border-gray-300 hover:border-gray-400 px-4 py-2 rounded-lg text-sm transition-colors"
         >
-          Zpět
+          Zpět na nabídku
         </button>
+        {nabidka.zakaznik?.email && (
+          <a
+            href={`mailto:${nabidka.zakaznik.email}?subject=Cenová nabídka${nabidka.cislo ? ` č. ${nabidka.cislo}` : ''}&body=Dobrý den,%0D%0Av příloze naleznete cenovou nabídku.%0D%0A%0D%0AS pozdravem`}
+            className="bg-white border border-gray-300 hover:border-gray-400 px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            Otevřít e-mail ({nabidka.zakaznik.email})
+          </a>
+        )}
       </nav>
 
       <div className="max-w-3xl mx-auto px-10 py-8 text-sm">
@@ -102,6 +112,27 @@ export default function TiskPage() {
             <div style={{ fontWeight: 600, fontSize: 13 }}>{nabidka.zakaznik.jmeno}</div>
             {nabidka.zakaznik.adresa && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.adresa}</div>}
             {nabidka.zakaznik.email && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.email}</div>}
+          </div>
+        )}
+
+        {/* Meta info: obor, typ, místo */}
+        {(nabidka.obor || nabidka.typ_zakazky || nabidka.misto) && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {nabidka.obor && (
+              <span style={{ background: '#fff7ed', color: '#c2410c', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                {LABEL_OBORU[nabidka.obor] ?? nabidka.obor}
+              </span>
+            )}
+            {nabidka.typ_zakazky && (
+              <span style={{ background: '#f9fafb', color: '#6b7280', borderRadius: 20, padding: '3px 10px', fontSize: 11 }}>
+                {nabidka.typ_zakazky === 'rekonstrukce' ? 'Rekonstrukce' : 'Novostavba'}
+              </span>
+            )}
+            {nabidka.misto && (
+              <span style={{ background: '#f9fafb', color: '#6b7280', borderRadius: 20, padding: '3px 10px', fontSize: 11 }}>
+                📍 {nabidka.misto}
+              </span>
+            )}
           </div>
         )}
 

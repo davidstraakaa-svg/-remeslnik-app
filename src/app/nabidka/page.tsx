@@ -334,11 +334,10 @@ export default function NabidkaPage() {
         </button>
       )}
 
-      {nabidka.poznamka && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 text-sm text-blue-700">
-          {nabidka.poznamka}
-        </div>
-      )}
+      <PoznamkaEditor
+        hodnota={nabidka.poznamka ?? ''}
+        onChange={text => setNabidka(n => n ? { ...n, poznamka: text } : n)}
+      />
 
       {/* Zákazník */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
@@ -531,5 +530,35 @@ export default function NabidkaPage() {
         </div>
       )}
     </main>
+  )
+}
+
+function PoznamkaEditor({ hodnota, onChange }: { hodnota: string; onChange: (t: string) => void }) {
+  const [edituje, setEdituje] = useState(false)
+  if (!edituje && !hodnota) return (
+    <button onClick={() => setEdituje(true)} className="text-xs text-gray-400 hover:text-orange-500 mb-4 block">
+      + Přidat poznámku k nabídce
+    </button>
+  )
+  if (!edituje) return (
+    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 text-sm text-blue-700 flex justify-between gap-2">
+      <span>{hodnota}</span>
+      <button onClick={() => setEdituje(true)} className="text-xs text-blue-400 hover:text-blue-600 shrink-0">Upravit</button>
+    </div>
+  )
+  return (
+    <div className="mb-4">
+      <textarea
+        value={hodnota}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Poznámka pro zákazníka (zobrazí se v nabídce i e-mailu)…"
+        rows={3}
+        autoFocus
+        className="w-full rounded-xl border border-orange-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+      />
+      <button onClick={() => setEdituje(false)} className="text-xs text-orange-600 hover:text-orange-700 mt-1">
+        Hotovo
+      </button>
+    </div>
   )
 }
