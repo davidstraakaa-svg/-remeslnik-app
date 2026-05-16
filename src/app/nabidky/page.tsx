@@ -14,6 +14,8 @@ const STAVY: { id: StavNabidky; label: string; barva: string }[] = [
   { id: 'dokončena', label: 'Dokončena', barva: 'bg-blue-100 text-blue-700' },
 ]
 
+type Razeni = 'datum-desc' | 'datum-asc' | 'cena-desc' | 'cena-asc'
+
 const LABEL_OBORU: Record<string, string> = Object.fromEntries(OBORY.map(o => [o.id, o.label]))
 
 function platnostInfo(datum?: string): { text: string; barva: string } | null {
@@ -26,12 +28,18 @@ function platnostInfo(datum?: string): { text: string; barva: string } | null {
   return { text: `Platná ${zbyvaDni} d`, barva: 'text-green-600' }
 }
 
+function hodnota(n: Nabidka): number {
+  return n.polozky.reduce((s, p) => s + p.mnozstvi * p.jednotkova_cena, 0)
+}
+
 export default function NabidkyPage() {
   const router = useRouter()
   const [historie, setHistorie] = useState<Nabidka[]>([])
   const [mazaniCislo, setMazaniCislo] = useState<string | null>(null)
   const [hledani, setHledani] = useState('')
   const [menimStavCislo, setMenimStavCislo] = useState<string | null>(null)
+  const [filtrStav, setFiltrStav] = useState<StavNabidky | 'vse'>('vse')
+  const [razeni, setRazeni] = useState<Razeni>('datum-desc')
 
   useEffect(() => {
     setHistorie(nactiHistorii())
@@ -55,15 +63,31 @@ export default function NabidkyPage() {
     setMenimStavCislo(null)
   }
 
-  const filtr = hledani.toLowerCase().trim()
-  const filtrovane = filtr
-    ? historie.filter(n =>
-        n.cislo?.toLowerCase().includes(filtr) ||
-        n.zakaznik?.jmeno?.toLowerCase().includes(filtr) ||
-        n.misto?.toLowerCase().includes(filtr) ||
-        (n.obor && LABEL_OBORU[n.obor]?.toLowerCase().includes(filtr))
-      )
-    : historie
+  // Statistiky
+  const celkovaHodnota = historie.reduce((s, n) => s + hodnota(n), 0)
+  const prijate = historie.filter(n => n.stav === 'přijata')
+  const hodnotaPrijatych = prijate.reduce((s, n) => s + hodnota(n), 0)
+  const uspesnost = historie.length > 0 ? Math.round(prijate.length / historie.length * 100) : 0
+
+  // Filtrování + řazení
+  const filtrText = hledani.toLowerCase().trim()
+  const filtrovane = historie
+    .filter(n => filtrStav === 'vse' || (n.stav ?? 'čeká') === filtrStav)
+    .filter(n =>
+      !filtrText ||
+      n.cislo?.toLowerCase().includes(filtrText) ||
+      n.zakaznik?.jmeno?.toLowerCase().includes(filtrText) ||
+      n.misto?.toLowerCase().includes(filtrText) ||
+      (n.obor && LABEL_OBORU[n.obor]?.toLowerCase().includes(filtrText))
+    )
+    .sort((a, b) => {
+      switch (razeni) {
+        case 'datum-asc': return (a.datum ?? '').localeCompare(b.datum ?? '')
+        case 'cena-desc': return hodnota(b) - hodnota(a)
+        case 'cena-asc': return hodnota(a) - hodnota(b)
+        default: return (b.datum ?? '').localeCompare(a.datum ?? '')
+      }
+    })
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-6 max-w-lg mx-auto">
@@ -80,8 +104,30 @@ export default function NabidkyPage() {
         </button>
       </header>
 
+      {/* Statistiky */}
       {historie.length > 0 && (
-        <div className="mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <p className="text-xs text-gray-400 mb-0.5">Celkem</p>
+            <p className="text-sm font-bold text-gray-900">{formatujCenu(Math.round(celkovaHodnota))}</p>
+            <p className="text-xs text-gray-400">{historie.length} nabídek</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <p className="text-xs text-gray-400 mb-0.5">Přijato</p>
+            <p className="text-sm font-bold text-green-600">{formatujCenu(Math.round(hodnotaPrijatych))}</p>
+            <p className="text-xs text-gray-400">{prijate.length} nabídek</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <p className="text-xs text-gray-400 mb-0.5">Úspěšnost</p>
+            <p className="text-sm font-bold text-orange-600">{uspesnost} %</p>
+            <p className="text-xs text-gray-400">z nabídek</p>
+          </div>
+        </div>
+      )}
+
+      {/* Hledání */}
+      {historie.length > 0 && (
+        <div className="mb-3">
           <input
             value={hledani}
             onChange={e => setHledani(e.target.value)}
@@ -91,10 +137,43 @@ export default function NabidkyPage() {
         </div>
       )}
 
+      {/* Filtr stavu + řazení */}
+      {historie.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+          <div className="flex gap-1.5 flex-shrink-0">
+            {(['vse', 'čeká', 'přijata', 'odmítnuta', 'dokončena'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setFiltrStav(s)}
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                  filtrStav === s
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
+              >
+                {s === 'vse' ? 'Vše' : STAVY.find(st => st.id === s)?.label ?? s}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex-shrink-0">
+            <select
+              value={razeni}
+              onChange={e => setRazeni(e.target.value as Razeni)}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-400"
+            >
+              <option value="datum-desc">Nejnovější</option>
+              <option value="datum-asc">Nejstarší</option>
+              <option value="cena-desc">Nejvyšší cena</option>
+              <option value="cena-asc">Nejnižší cena</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {filtrovane.length === 0 ? (
         <div className="text-center py-16">
-          {hledani ? (
-            <p className="text-gray-400">Žádné výsledky pro „{hledani}"</p>
+          {hledani || filtrStav !== 'vse' ? (
+            <p className="text-gray-400">Žádné výsledky pro tento filtr</p>
           ) : (
             <>
               <p className="text-gray-500 font-medium mb-1">Zatím žádné nabídky</p>
@@ -113,7 +192,7 @@ export default function NabidkyPage() {
           <p className="text-xs text-gray-400 mb-3">{filtrovane.length} nabídek</p>
           <div className="space-y-3">
             {filtrovane.map(nabidka => {
-              const celkem = nabidka.polozky.reduce((s, p) => s + p.mnozstvi * p.jednotkova_cena, 0)
+              const celkem = hodnota(nabidka)
               const datum = nabidka.datum ? new Date(nabidka.datum) : null
               const platnost = platnostInfo(nabidka.datum)
               return (
