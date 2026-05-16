@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
 import { nactiNabidku, ulozNabidku, nactiProfil } from '@/lib/storage'
 import { formatujCenu } from '@/lib/formatters'
-import { PLATNOST_NABIDKY_DNI } from '@/lib/constants'
+import { PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
 import type { Nabidka, Polozka, Profil } from '@/types'
 
 const NAZVY_VARIANT = ['Ekonomická', 'Standardní', 'Prémiová']
@@ -337,16 +337,32 @@ export default function NabidkaPage() {
 
       {/* Souhrn */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-gray-600">Celkem bez DPH</span>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600 text-sm">Celkem bez DPH</span>
           <span className="text-xl font-bold text-gray-900">{formatujCenu(Math.round(celkem))}</span>
         </div>
+        {profil?.platce_dph && (
+          <>
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-gray-400 text-xs">DPH 21 %</span>
+              <span className="text-sm text-gray-500">{formatujCenu(Math.round(celkem * SAZBA_DPH))}</span>
+            </div>
+            <div className="flex justify-between items-center mt-1 pt-2 border-t border-gray-100">
+              <span className="text-gray-700 text-sm font-semibold">Celkem s DPH</span>
+              <span className="text-lg font-bold text-orange-600">{formatujCenu(Math.round(celkem * (1 + SAZBA_DPH)))}</span>
+            </div>
+          </>
+        )}
+        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+          <span className="text-gray-400 text-xs">Záloha {ZALOHOVE_PROCENTO} %</span>
+          <span className="text-xs text-gray-500">{formatujCenu(Math.round(celkem * ZALOHOVE_PROCENTO / 100))}</span>
+        </div>
         {nabidka.doba_realizace && (
-          <p className="text-xs text-gray-400 mb-2">Odhadovaná doba: {nabidka.doba_realizace}</p>
+          <p className="text-xs text-gray-400 mt-2">Odhadovaná doba: {nabidka.doba_realizace}</p>
         )}
         <button
           onClick={() => setZobrazBreakdown(b => !b)}
-          className="text-xs text-orange-600 hover:text-orange-700"
+          className="text-xs text-orange-600 hover:text-orange-700 mt-2 block"
         >
           {zobrazBreakdown ? 'Skrýt' : 'Zobrazit'} rozpad nákladů
         </button>
