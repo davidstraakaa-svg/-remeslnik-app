@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { OborSelect } from '@/components/OborSelect'
 import { masProfil, ulozNabidku, ulozDoHistorie, dalsiCisloNabidky } from '@/lib/storage'
+import type { TypZakazky } from '@/types'
 
 const KLIC_FORMULAR = 'remeslnik_formular'
 
@@ -17,9 +18,11 @@ const FAZE_NACITANI = [
 export default function HomePage() {
   const router = useRouter()
   const [obor, setObor] = useState('')
+  const [typZakazky, setTypZakazky] = useState<TypZakazky>('rekonstrukce')
   const [popis, setPopis] = useState('')
   const [vymery, setVymery] = useState('')
   const [misto, setMisto] = useState('')
+  const [vzdalenost, setVzdalenost] = useState('')
   const [nacitani, setNacitani] = useState(false)
   const [fazeIndex, setFazeIndex] = useState(0)
   const [chyba, setChyba] = useState('')
@@ -33,20 +36,22 @@ export default function HomePage() {
     try {
       const saved = sessionStorage.getItem(KLIC_FORMULAR)
       if (!saved) return
-      const { obor: o, popis: p, vymery: v, misto: m } = JSON.parse(saved)
+      const { obor: o, typZakazky: t, popis: p, vymery: v, misto: m, vzdalenost: d } = JSON.parse(saved)
       if (o) setObor(o)
+      if (t) setTypZakazky(t)
       if (p) setPopis(p)
       if (v) setVymery(v)
       if (m) setMisto(m)
+      if (d) setVzdalenost(d)
     } catch { /* poškozená cache */ }
   }, [])
 
   useEffect(() => {
     if (!obor && !popis && !vymery) return
     try {
-      sessionStorage.setItem(KLIC_FORMULAR, JSON.stringify({ obor, popis, vymery, misto }))
+      sessionStorage.setItem(KLIC_FORMULAR, JSON.stringify({ obor, typZakazky, popis, vymery, misto, vzdalenost }))
     } catch { /* private mode */ }
-  }, [obor, popis, vymery, misto])
+  }, [obor, typZakazky, popis, vymery, misto, vzdalenost])
 
   useEffect(() => {
     if (!nacitani) { setFazeIndex(0); return }
@@ -67,11 +72,13 @@ export default function HomePage() {
     setNacitani(true)
     odeslanoRef.current = true
 
+    const vzdalenostKm = parseInt(vzdalenost) || 0
+
     try {
       const odpoved = await fetch('/api/nabidka', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ obor, popis, vymery, misto }),
+        body: JSON.stringify({ obor, typ_zakazky: typZakazky, popis, vymery, misto, vzdalenost_km: vzdalenostKm }),
       })
 
       const data = await odpoved.json()
@@ -82,6 +89,8 @@ export default function HomePage() {
         cislo: dalsiCisloNabidky(),
         obor,
         misto: misto.trim() || undefined,
+        typ_zakazky: typZakazky,
+        vzdalenost_km: vzdalenostKm || undefined,
         datum: new Date().toISOString(),
       }
 
@@ -105,16 +114,10 @@ export default function HomePage() {
           <p className="text-gray-500 text-sm">Popiš zakázku a dostaneš cenovou nabídku během chvilky.</p>
         </div>
         <div className="flex gap-3 mt-1">
-          <button
-            onClick={() => router.push('/nabidky')}
-            className="text-xs text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={() => router.push('/nabidky')} className="text-xs text-gray-400 hover:text-gray-600">
             Historie
           </button>
-          <button
-            onClick={() => router.push('/onboarding')}
-            className="text-xs text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={() => router.push('/onboarding')} className="text-xs text-gray-400 hover:text-gray-600">
             Profil
           </button>
         </div>
@@ -122,6 +125,34 @@ export default function HomePage() {
 
       <div className="space-y-6">
         <OborSelect value={obor} onChange={setObor} />
+
+        {/* P107 – rekonstrukce vs. novostavba */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Typ zakázky</label>
+          <div className="flex gap-2">
+            {([
+              { id: 'rekonstrukce', label: 'Rekonstrukce' },
+              { id: 'novostavba', label: 'Novostavba' },
+            ] as { id: TypZakazky; label: string }[]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setTypZakazky(id)}
+                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                  typZakazky === id
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            {typZakazky === 'rekonstrukce'
+              ? 'Zahrnuje bourání, odvoz suti a přípravu podkladu.'
+              : 'Čistý podklad bez bourání.'}
+          </p>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Popis zakázky</label>
@@ -148,17 +179,32 @@ export default function HomePage() {
           <p className="text-xs text-gray-400 mt-1">Bez výměr nelze spočítat přesnou nabídku.</p>
         </div>
 
-        {/* P83 – místo realizace pro regionální ceny */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Místo realizace</label>
-          <input
-            value={misto}
-            onChange={e => setMisto(e.target.value)}
-            placeholder="Např. Praha, Brno, Jihočeský kraj…"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-          />
-          <p className="text-xs text-gray-400 mt-1">Volitelné — upřesní regionální ceny práce.</p>
+        {/* P83 – místo + P54 – vzdálenost ve dvou sloupcích */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Místo realizace</label>
+            <input
+              value={misto}
+              onChange={e => setMisto(e.target.value)}
+              placeholder="Praha, Brno…"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+          </div>
+          <div>
+            {/* P54 – vzdálenost pro automatické přidání dopravy */}
+            <label className="block text-sm font-medium text-gray-700 mb-2">Vzdálenost (km)</label>
+            <input
+              type="number"
+              min="0"
+              max="500"
+              value={vzdalenost}
+              onChange={e => setVzdalenost(e.target.value)}
+              placeholder="0"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+          </div>
         </div>
+        <p className="text-xs text-gray-400 -mt-4">Místo upřesní regionální ceny. Vzdálenost &gt; 20 km přidá dopravu.</p>
       </div>
 
       {chyba && <p className="text-red-500 text-sm mt-4">{chyba}</p>}

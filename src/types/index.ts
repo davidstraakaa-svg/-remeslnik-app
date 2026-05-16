@@ -10,10 +10,14 @@ export type Polozka = {
   zdroj_ceny: string
 }
 
+export type TypZakazky = 'rekonstrukce' | 'novostavba'
+
 export type Nabidka = {
   cislo?: string
   obor?: string
   misto?: string
+  typ_zakazky?: TypZakazky
+  vzdalenost_km?: number
   datum?: string
   zakaznik?: { jmeno: string; adresa?: string }
   doba_realizace?: string
