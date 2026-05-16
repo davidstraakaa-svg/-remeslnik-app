@@ -42,4 +42,7 @@ export type Profil = {
   email: string
   platce_dph: boolean
   logo?: string
+  cislo_uctu?: string
+  zalohove_procento?: number
+  splatnost_dni?: number
 }

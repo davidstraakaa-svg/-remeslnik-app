@@ -170,6 +170,39 @@ export default function OnboardingPage() {
           type="email"
         />
 
+        <FormPole
+          label="Číslo účtu (pro PDF)"
+          value={profil.cislo_uctu ?? ''}
+          onChange={v => aktualizuj('cislo_uctu', v)}
+          placeholder="123456789/0800"
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Záloha %</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={profil.zalohove_procento ?? 30}
+              onChange={e => setProfil(p => ({ ...p, zalohove_procento: parseInt(e.target.value) || 30 }))}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Splatnost (dní)</label>
+            <input
+              type="number"
+              min="1"
+              max="90"
+              value={profil.splatnost_dni ?? 14}
+              onChange={e => setProfil(p => ({ ...p, splatnost_dni: parseInt(e.target.value) || 14 }))}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 -mt-2">Záloha a splatnost se zobrazí v PDF nabídce.</p>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">Plátce DPH?</label>
           <div className="flex gap-3">

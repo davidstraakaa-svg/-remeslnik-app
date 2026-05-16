@@ -36,6 +36,8 @@ export default function TiskPage() {
   const celkemBezDph = brutto - slevaKc
   const dph = profil?.platce_dph ? celkemBezDph * SAZBA_DPH : null
   const celkemSDph = dph !== null ? celkemBezDph + dph : null
+  const zalohaProc = profil?.zalohove_procento ?? ZALOHOVE_PROCENTO
+  const splatnostDni = profil?.splatnost_dni ?? 14
 
   return (
     <>
@@ -208,8 +210,13 @@ export default function TiskPage() {
               </div>
             )}
             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
-              Záloha {ZALOHOVE_PROCENTO} % ({formatujCenu(Math.round(celkemBezDph * ZALOHOVE_PROCENTO / 100))}) před zahájením prací
+              Záloha {zalohaProc} % ({formatujCenu(Math.round(celkemBezDph * zalohaProc / 100))}) před zahájením prací
             </div>
+            {profil?.cislo_uctu && (
+              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                Číslo účtu: {profil.cislo_uctu}
+              </div>
+            )}
           </div>
         </div>
 
@@ -228,7 +235,7 @@ export default function TiskPage() {
             <span style={{ color: '#dc2626' }}>○</span> zkontrolujte před odesláním
           </div>
           <div>Záruka na provedené práce: 24 měsíců (§ 2113 a násl. zákona č. 89/2012 Sb.). Na materiál platí záruka výrobce.</div>
-          <div>Záloha splatná 3 pracovní dny před zahájením. Doplatek do 14 dní od předání díla. Platba převodem.</div>
+          <div>Záloha splatná 3 pracovní dny před zahájením. Doplatek do {splatnostDni} dní od předání díla. Platba převodem{profil?.cislo_uctu ? ` na účet ${profil.cislo_uctu}` : ''}.</div>
           <div>Tato nabídka je nezávazným odhadem. Konečná cena může být upřesněna po prohlídce místa realizace.</div>
           {profil?.ico && (
             <div>Ověřit dodavatele: ares.gov.cz (IČO: {profil.ico})</div>
