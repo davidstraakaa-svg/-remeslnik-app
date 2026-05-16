@@ -5,7 +5,21 @@ import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
 import { nactiNabidku, ulozNabidku, nactiProfil } from '@/lib/storage'
 import { formatujCenu } from '@/lib/formatters'
+import { PLATNOST_NABIDKY_DNI } from '@/lib/constants'
 import type { Nabidka, Polozka, Profil } from '@/types'
+
+const NAZVY_VARIANT = ['Ekonomická', 'Standardní', 'Prémiová']
+const BARVY_VARIANT = ['text-emerald-600 bg-emerald-50', 'text-orange-600 bg-orange-50', 'text-violet-600 bg-violet-50']
+
+function platnostInfo(datum?: string): { text: string; barva: string } | null {
+  if (!datum) return null
+  const expiry = new Date(datum).getTime() + PLATNOST_NABIDKY_DNI * 24 * 60 * 60 * 1000
+  const zbyvaDni = Math.ceil((expiry - Date.now()) / (24 * 60 * 60 * 1000))
+  if (zbyvaDni < 0) return { text: 'Nabídka expirovala', barva: 'text-red-600 bg-red-50 border-red-200' }
+  if (zbyvaDni <= 3) return { text: `Platná ještě ${zbyvaDni} den`, barva: 'text-red-600 bg-red-50 border-red-200' }
+  if (zbyvaDni <= 7) return { text: `Platná ještě ${zbyvaDni} dní`, barva: 'text-amber-600 bg-amber-50 border-amber-200' }
+  return { text: `Platná ${zbyvaDni} dní`, barva: 'text-green-700 bg-green-50 border-green-200' }
+}
 
 export default function NabidkaPage() {
   const router = useRouter()
@@ -14,6 +28,7 @@ export default function NabidkaPage() {
   const [upravy, setUpravy] = useState<Record<number, Partial<Polozka>>>({})
   const [zakaznikJmeno, setZakaznikJmeno] = useState('')
   const [zakaznikAdresa, setZakaznikAdresa] = useState('')
+  const [zakaznikEmail, setZakaznikEmail] = useState('')
   const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
   const [emailAdresa, setEmailAdresa] = useState('')
@@ -30,6 +45,7 @@ export default function NabidkaPage() {
     if (nactena.zakaznik) {
       setZakaznikJmeno(nactena.zakaznik.jmeno)
       setZakaznikAdresa(nactena.zakaznik.adresa ?? '')
+      setZakaznikEmail(nactena.zakaznik.email ?? '')
     }
   }, [router])
 
@@ -66,6 +82,15 @@ export default function NabidkaPage() {
     return nabidka!.polozky.map((p, i) => ({ ...p, ...upravy[i] }))
   }
 
+  function sestavZakaznika() {
+    if (!zakaznikJmeno.trim()) return nabidka!.zakaznik
+    return {
+      jmeno: zakaznikJmeno.trim(),
+      adresa: zakaznikAdresa.trim() || undefined,
+      email: zakaznikEmail.trim() || undefined,
+    }
+  }
+
   async function odeslatEmail() {
     if (emailOdeslanRef.current) return
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAdresa)) {
@@ -79,7 +104,7 @@ export default function NabidkaPage() {
     const aktualniNabidka: Nabidka = {
       ...nabidka!,
       polozky: sestavPolozky(),
-      zakaznik: zakaznikJmeno.trim() ? { jmeno: zakaznikJmeno.trim(), adresa: zakaznikAdresa.trim() || undefined } : nabidka!.zakaznik,
+      zakaznik: sestavZakaznika(),
     }
 
     try {
@@ -108,7 +133,7 @@ export default function NabidkaPage() {
     const aktualniNabidka: Nabidka = {
       ...nabidka,
       polozky: sestavPolozky(),
-      zakaznik: zakaznikJmeno.trim() ? { jmeno: zakaznikJmeno.trim(), adresa: zakaznikAdresa.trim() || undefined } : undefined,
+      zakaznik: sestavZakaznika(),
     }
     ulozNabidku(aktualniNabidka)
     router.push('/nabidka/tisk')
@@ -117,8 +142,8 @@ export default function NabidkaPage() {
   const polozky = sestavPolozky()
   const celkem = polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
   const pocetCervenych = polozky.filter(p => p.jistota_ceny === 'cervena').length
+  const platnost = platnostInfo(nabidka.datum)
 
-  // P183 – breakdown podle typu pro interní přehled marže
   const breakdown = polozky.reduce<Record<string, number>>((acc, p) => {
     const klic = p.typ?.toLowerCase() ?? 'ostatní'
     acc[klic] = (acc[klic] ?? 0) + p.mnozstvi * p.jednotkova_cena
@@ -133,9 +158,22 @@ export default function NabidkaPage() {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Cenová nabídka</h1>
-          {nabidka.cislo && <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>}
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {nabidka.cislo && <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>}
+            {nabidka.aktivni_varianta !== undefined && nabidka.varianty?.[nabidka.aktivni_varianta] && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${BARVY_VARIANT[nabidka.aktivni_varianta] ?? BARVY_VARIANT[2]}`}>
+                {NAZVY_VARIANT[nabidka.aktivni_varianta] ?? nabidka.varianty[nabidka.aktivni_varianta].nazev}
+              </span>
+            )}
+          </div>
         </div>
       </header>
+
+      {platnost && (
+        <div className={`border rounded-xl px-4 py-2.5 mb-4 text-xs font-medium ${platnost.barva}`}>
+          {platnost.text}
+        </div>
+      )}
 
       {pocetCervenych > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm text-red-700">
@@ -162,7 +200,7 @@ export default function NabidkaPage() {
         </div>
       )}
 
-      {/* P46 – zákazníkovy údaje pro PDF */}
+      {/* Zákazník */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
         <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Zákazník (volitelné)</p>
         <div className="space-y-2">
@@ -178,10 +216,20 @@ export default function NabidkaPage() {
             placeholder="Adresa (ulice, město)"
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
           />
+          <input
+            type="email"
+            value={zakaznikEmail}
+            onChange={e => {
+              setZakaznikEmail(e.target.value)
+              if (!emailAdresa) setEmailAdresa(e.target.value)
+            }}
+            placeholder="E-mail zákazníka"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+          />
         </div>
       </div>
 
-      {/* P183 – souhrn a interní breakdown */}
+      {/* Souhrn */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
         <div className="flex justify-between items-center mb-2">
           <span className="text-gray-600">Celkem bez DPH</span>
@@ -216,7 +264,12 @@ export default function NabidkaPage() {
           Stáhnout PDF
         </button>
         <button
-          onClick={() => { setZobrazEmail(e => !e); setEmailStav('idle'); setEmailChyba('') }}
+          onClick={() => {
+            setZobrazEmail(e => !e)
+            setEmailStav('idle')
+            setEmailChyba('')
+            if (!emailAdresa && zakaznikEmail) setEmailAdresa(zakaznikEmail)
+          }}
           className="px-5 py-4 rounded-xl border-2 border-orange-200 text-orange-600 hover:border-orange-400 font-semibold text-base transition-colors bg-white"
           title="Odeslat zákazníkovi e-mailem"
         >

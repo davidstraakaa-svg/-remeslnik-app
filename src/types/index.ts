@@ -26,7 +26,7 @@ export type Nabidka = {
   typ_zakazky?: TypZakazky
   vzdalenost_km?: number
   datum?: string
-  zakaznik?: { jmeno: string; adresa?: string }
+  zakaznik?: { jmeno: string; adresa?: string; email?: string }
   doba_realizace?: string
   varianty?: Varianta[]
   aktivni_varianta?: number
