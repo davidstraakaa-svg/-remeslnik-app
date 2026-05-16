@@ -27,6 +27,7 @@ export default function NabidkyPage() {
 
   useEffect(() => {
     setHistorie(nactiHistorii())
+    document.title = 'Historie nabídek — Řemeslník'
   }, [])
 
   function otevrit(nabidka: Nabidka) {

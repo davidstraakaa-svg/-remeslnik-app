@@ -47,6 +47,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     const existujici = nactiProfil()
     if (existujici) setProfil(existujici)
+    document.title = 'Profil — Řemeslník'
   }, [])
 
   function aktualizuj(pole: keyof Profil, hodnota: string | boolean) {

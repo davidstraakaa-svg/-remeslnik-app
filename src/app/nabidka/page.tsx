@@ -50,6 +50,7 @@ export default function NabidkaPage() {
     if (!nactena) { router.push('/'); return }
     setNabidka(nactena)
     setProfil(nactiProfil())
+    document.title = nactena.cislo ? `Nabídka č. ${nactena.cislo} — Řemeslník` : 'Nabídka — Řemeslník'
     if (nactena.zakaznik) {
       setZakaznikJmeno(nactena.zakaznik.jmeno)
       setZakaznikAdresa(nactena.zakaznik.adresa ?? '')

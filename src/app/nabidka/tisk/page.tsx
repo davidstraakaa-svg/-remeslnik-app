@@ -20,7 +20,9 @@ export default function TiskPage() {
   }, [router])
 
   useEffect(() => {
-    if (nabidka) setTimeout(() => window.print(), 500)
+    if (!nabidka) return
+    document.title = nabidka.cislo ? `Nabídka č. ${nabidka.cislo}` : 'Nabídka — Řemeslník'
+    setTimeout(() => window.print(), 500)
   }, [nabidka])
 
   if (!nabidka) return null
@@ -96,6 +98,7 @@ export default function TiskPage() {
             <div style={{ fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5, marginBottom: 4 }}>Odběratel</div>
             <div style={{ fontWeight: 600, fontSize: 13 }}>{nabidka.zakaznik.jmeno}</div>
             {nabidka.zakaznik.adresa && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.adresa}</div>}
+            {nabidka.zakaznik.email && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.email}</div>}
           </div>
         )}
 
