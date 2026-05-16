@@ -46,6 +46,29 @@ export default function NabidkyPage() {
     document.title = 'Historie nabídek — Řemeslník'
   }, [])
 
+  function exportCsv() {
+    const radky = [
+      ['Číslo', 'Datum', 'Zákazník', 'Místo', 'Obor', 'Stav', 'Hodnota Kč'],
+      ...historie.map(n => [
+        n.cislo ?? '',
+        n.datum ? new Date(n.datum).toLocaleDateString('cs-CZ') : '',
+        n.zakaznik?.jmeno ?? '',
+        n.misto ?? '',
+        n.obor ? (LABEL_OBORU[n.obor] ?? n.obor) : '',
+        n.stav ?? 'čeká',
+        Math.round(n.polozky.reduce((s, p) => s + p.mnozstvi * p.jednotkova_cena, 0)).toString(),
+      ]),
+    ]
+    const csv = radky.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(';')).join('\r\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nabidky-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function otevrit(nabidka: Nabidka) {
     ulozNabidku(nabidka)
     router.push('/nabidka')
@@ -96,6 +119,15 @@ export default function NabidkyPage() {
           ← Zpět
         </button>
         <h1 className="text-xl font-bold text-gray-900 flex-1">Historie nabídek</h1>
+        {historie.length > 0 && (
+          <button
+            onClick={exportCsv}
+            className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1"
+            title="Exportovat do CSV"
+          >
+            ↓ CSV
+          </button>
+        )}
         <button
           onClick={() => router.push('/')}
           className="bg-orange-500 text-white px-4 py-2 rounded-xl text-sm font-medium"
