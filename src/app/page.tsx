@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { OborSelect } from '@/components/OborSelect'
-import { masProfil, ulozNabidku, ulozDoHistorie, dalsiCisloNabidky } from '@/lib/storage'
+import { masProfil, ulozNabidku, ulozDoHistorie, dalsiCisloNabidky, nactiHistorii } from '@/lib/storage'
 import type { Nabidka, TypZakazky } from '@/types'
 
 const KLIC_FORMULAR = 'remeslnik_formular'
@@ -26,10 +26,13 @@ export default function HomePage() {
   const [nacitani, setNacitani] = useState(false)
   const [fazeIndex, setFazeIndex] = useState(0)
   const [chyba, setChyba] = useState('')
+  const [pocetNabidek, setPocetNabidek] = useState(0)
   const odeslanoRef = useRef(false)
 
   useEffect(() => {
     if (!masProfil()) router.push('/onboarding')
+    setPocetNabidek(nactiHistorii().length)
+    document.title = 'Nová nabídka — Řemeslník'
   }, [router])
 
   useEffect(() => {
@@ -118,8 +121,13 @@ export default function HomePage() {
           <p className="text-gray-500 text-sm">Popiš zakázku a dostaneš cenovou nabídku během chvilky.</p>
         </div>
         <div className="flex gap-3 mt-1">
-          <button onClick={() => router.push('/nabidky')} className="text-xs text-gray-400 hover:text-gray-600">
+          <button onClick={() => router.push('/nabidky')} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
             Historie
+            {pocetNabidek > 0 && (
+              <span className="bg-orange-100 text-orange-600 text-xs font-semibold px-1.5 py-0.5 rounded-full leading-none">
+                {pocetNabidek}
+              </span>
+            )}
           </button>
           <button onClick={() => router.push('/onboarding')} className="text-xs text-gray-400 hover:text-gray-600">
             Profil

@@ -38,6 +38,7 @@ export default function NabidkaPage() {
   const [novaCena, setNovaCena] = useState('')
   const [novaTyp, setNovaTyp] = useState('práce')
   const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
+  const [skopirovano, setSkopirovano] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
   const [emailAdresa, setEmailAdresa] = useState('')
   const [emailZprava, setEmailZprava] = useState('')
@@ -115,6 +116,29 @@ export default function NabidkaPage() {
     setNovaMnozstvi('1')
     setNovaCena('')
     setZobrazPridatFormular(false)
+  }
+
+  function kopirovatJakoText() {
+    const p = sestavPolozky()
+    const celkemVal = p.reduce((s, i) => s + i.mnozstvi * i.jednotkova_cena, 0)
+    const radky = p.map(i => `• ${i.popis} (${i.mnozstvi} ${i.jednotka} × ${formatujCenu(i.jednotkova_cena)}) = ${formatujCenu(Math.round(i.mnozstvi * i.jednotkova_cena))}`).join('\n')
+    const dphRad = profil?.platce_dph ? `DPH 21 %: ${formatujCenu(Math.round(celkemVal * SAZBA_DPH))}\nCELKEM S DPH: ${formatujCenu(Math.round(celkemVal * (1 + SAZBA_DPH)))}\n` : ''
+    const text = [
+      `CENOVÁ NABÍDKA${nabidka!.cislo ? ` č. ${nabidka!.cislo}` : ''}`,
+      profil?.jmeno ?? '',
+      '',
+      radky,
+      '',
+      `CELKEM BEZ DPH: ${formatujCenu(Math.round(celkemVal))}`,
+      dphRad.trim(),
+      `Záloha ${ZALOHOVE_PROCENTO} %: ${formatujCenu(Math.round(celkemVal * ZALOHOVE_PROCENTO / 100))}`,
+      nabidka!.doba_realizace ? `Doba realizace: ${nabidka!.doba_realizace}` : '',
+    ].filter(Boolean).join('\n')
+
+    navigator.clipboard.writeText(text).then(() => {
+      setSkopirovano(true)
+      setTimeout(() => setSkopirovano(false), 2000)
+    })
   }
 
   function sestavZakaznika() {
@@ -340,7 +364,16 @@ export default function NabidkaPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
         <div className="flex justify-between items-center">
           <span className="text-gray-600 text-sm">Celkem bez DPH</span>
-          <span className="text-xl font-bold text-gray-900">{formatujCenu(Math.round(celkem))}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={kopirovatJakoText}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              title="Kopírovat jako text (WhatsApp)"
+            >
+              {skopirovano ? '✓ Zkopírováno' : 'Kopírovat'}
+            </button>
+            <span className="text-xl font-bold text-gray-900">{formatujCenu(Math.round(celkem))}</span>
+          </div>
         </div>
         {profil?.platce_dph && (
           <>
