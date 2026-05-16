@@ -29,6 +29,14 @@ export default function NabidkaPage() {
   const [zakaznikJmeno, setZakaznikJmeno] = useState('')
   const [zakaznikAdresa, setZakaznikAdresa] = useState('')
   const [zakaznikEmail, setZakaznikEmail] = useState('')
+  const [smazane, setSmazane] = useState<Set<number>>(new Set())
+  const [prilohy, setPrilohy] = useState<Polozka[]>([])
+  const [zobrazPridatFormumar, setZobrazPridatFormular] = useState(false)
+  const [novaPopis, setNovaPopis] = useState('')
+  const [novaMnozstvi, setNovaMnozstvi] = useState('1')
+  const [novaJednotka, setNovaJednotka] = useState('hod')
+  const [novaCena, setNovaCena] = useState('')
+  const [novaTyp, setNovaTyp] = useState('práce')
   const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
   const [emailAdresa, setEmailAdresa] = useState('')
@@ -79,7 +87,33 @@ export default function NabidkaPage() {
   }
 
   function sestavPolozky(): Polozka[] {
-    return nabidka!.polozky.map((p, i) => ({ ...p, ...upravy[i] }))
+    const original = nabidka!.polozky
+      .map((p, i) => ({ polozka: { ...p, ...upravy[i] }, index: i }))
+      .filter(({ index }) => !smazane.has(index))
+      .map(({ polozka }) => polozka)
+    return [...original, ...prilohy]
+  }
+
+  function smazatPolozku(originalIndex: number) {
+    setSmazane(prev => new Set([...prev, originalIndex]))
+  }
+
+  function pridatPolozku() {
+    if (!novaPopis.trim() || !novaCena) return
+    const nova: Polozka = {
+      popis: novaPopis.trim(),
+      mnozstvi: parseFloat(novaMnozstvi) || 1,
+      jednotka: novaJednotka,
+      jednotkova_cena: parseFloat(novaCena) || 0,
+      typ: novaTyp,
+      jistota_ceny: 'oranzova',
+      zdroj_ceny: 'vlastní',
+    }
+    setPrilohy(prev => [...prev, nova])
+    setNovaPopis('')
+    setNovaMnozstvi('1')
+    setNovaCena('')
+    setZobrazPridatFormular(false)
   }
 
   function sestavZakaznika() {
@@ -182,17 +216,89 @@ export default function NabidkaPage() {
         </div>
       )}
 
-      <div className="space-y-2 mb-6">
-        {polozky.map((polozka, i) => (
+      <div className="space-y-2 mb-3">
+        {nabidka.polozky.map((polozka, i) => {
+          if (smazane.has(i)) return null
+          return (
+            <PolozkaRadek
+              key={i}
+              polozka={{ ...polozka, ...upravy[i] }}
+              upravena={!!upravy[i]}
+              onZmena={(field, hodnota) => upravPolozku(i, field, hodnota)}
+              onObnovit={() => obnovitPuvodni(i)}
+              onSmazat={() => smazatPolozku(i)}
+            />
+          )
+        })}
+        {prilohy.map((polozka, i) => (
           <PolozkaRadek
-            key={i}
+            key={`priloha-${i}`}
             polozka={polozka}
-            upravena={!!upravy[i]}
-            onZmena={(field, hodnota) => upravPolozku(i, field, hodnota)}
-            onObnovit={() => obnovitPuvodni(i)}
+            upravena={false}
+            onZmena={() => {}}
+            onObnovit={() => {}}
+            onSmazat={() => setPrilohy(prev => prev.filter((_, j) => j !== i))}
           />
         ))}
       </div>
+
+      {zobrazPridatFormumar ? (
+        <div className="bg-white rounded-xl border border-orange-200 p-4 mb-4 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Nová položka</p>
+          <input
+            value={novaPopis}
+            onChange={e => setNovaPopis(e.target.value)}
+            placeholder="Popis položky"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <input
+              type="number"
+              value={novaMnozstvi}
+              onChange={e => setNovaMnozstvi(e.target.value)}
+              placeholder="Mn."
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+            <input
+              value={novaJednotka}
+              onChange={e => setNovaJednotka(e.target.value)}
+              placeholder="Jed."
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+            <input
+              type="number"
+              value={novaCena}
+              onChange={e => setNovaCena(e.target.value)}
+              placeholder="Kč/jed."
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+          </div>
+          <select
+            value={novaTyp}
+            onChange={e => setNovaTyp(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+          >
+            <option value="práce">Práce</option>
+            <option value="materiál">Materiál</option>
+            <option value="odvoz">Odvoz</option>
+          </select>
+          <div className="flex gap-2">
+            <button onClick={pridatPolozku} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+              Přidat
+            </button>
+            <button onClick={() => setZobrazPridatFormular(false)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm">
+              Zrušit
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setZobrazPridatFormular(true)}
+          className="w-full mb-4 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-orange-300 hover:text-orange-500 transition-colors"
+        >
+          + Přidat vlastní položku
+        </button>
+      )}
 
       {nabidka.poznamka && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 text-sm text-blue-700">

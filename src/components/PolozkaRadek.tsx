@@ -8,9 +8,10 @@ type Props = {
   upravena: boolean
   onZmena: (field: keyof Polozka, value: number) => void
   onObnovit: () => void
+  onSmazat?: () => void
 }
 
-export function PolozkaRadek({ polozka, upravena, onZmena, onObnovit }: Props) {
+export function PolozkaRadek({ polozka, upravena, onZmena, onObnovit, onSmazat }: Props) {
   const [otevrena, setOtevrena] = useState(false)
   const conf = JISTOTA_CONFIG[polozka.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
   const celkem = polozka.mnozstvi * polozka.jednotkova_cena
@@ -70,15 +71,24 @@ export function PolozkaRadek({ polozka, upravena, onZmena, onObnovit }: Props) {
               <span className={`w-2 h-2 rounded-full ${conf.dot}`} />
               {conf.label}: {polozka.zdroj_ceny}
             </div>
-            {/* P131 – obnovení původní AI ceny */}
-            {upravena && (
-              <button
-                onClick={e => { e.stopPropagation(); onObnovit() }}
-                className="text-xs text-gray-400 hover:text-gray-600 underline"
-              >
-                Obnovit původní cenu
-              </button>
-            )}
+            <div className="flex gap-3">
+              {upravena && (
+                <button
+                  onClick={e => { e.stopPropagation(); onObnovit() }}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline"
+                >
+                  Obnovit původní cenu
+                </button>
+              )}
+              {onSmazat && (
+                <button
+                  onClick={e => { e.stopPropagation(); onSmazat() }}
+                  className="text-xs text-red-400 hover:text-red-600 underline"
+                >
+                  Smazat položku
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
