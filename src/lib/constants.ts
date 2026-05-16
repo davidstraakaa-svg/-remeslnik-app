@@ -1,14 +1,14 @@
 export const OBORY = [
-  { id: 'zahradnik', label: 'Zahradník' },
-  { id: 'instalater', label: 'Instalatér' },
-  { id: 'zednik', label: 'Zedník' },
-  { id: 'tesar', label: 'Tesař' },
-  { id: 'malir', label: 'Malíř' },
-  { id: 'podlar', label: 'Podlář' },
-  { id: 'elektrikar', label: 'Elektrikář' },
-  { id: 'pokryvac', label: 'Pokrývač' },
-  { id: 'fve', label: 'Fotovoltaika' },
-  { id: 'jiny', label: 'Jiný' },
+  { id: 'zahradnik', label: 'Zahradník', ikona: '🌿' },
+  { id: 'instalater', label: 'Instalatér', ikona: '🔧' },
+  { id: 'zednik', label: 'Zedník', ikona: '🧱' },
+  { id: 'tesar', label: 'Tesař', ikona: '🪚' },
+  { id: 'malir', label: 'Malíř', ikona: '🖌️' },
+  { id: 'podlar', label: 'Podlář', ikona: '🏠' },
+  { id: 'elektrikar', label: 'Elektrikář', ikona: '⚡' },
+  { id: 'pokryvac', label: 'Pokrývač', ikona: '🏗️' },
+  { id: 'fve', label: 'Fotovoltaika', ikona: '☀️' },
+  { id: 'jiny', label: 'Jiný obor', ikona: '🔨' },
 ] as const
 
 export const JISTOTA_CONFIG = {

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
-import { nactiNabidku, ulozNabidku, nactiProfil } from '@/lib/storage'
+import { nactiNabidku, ulozNabidku, nactiProfil, nactiZakazniky } from '@/lib/storage'
 import { formatujCenu } from '@/lib/formatters'
 import { PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
 import type { Nabidka, Polozka, Profil } from '@/types'
@@ -38,7 +38,10 @@ export default function NabidkaPage() {
   const [novaCena, setNovaCena] = useState('')
   const [novaTyp, setNovaTyp] = useState('práce')
   const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
+  const [sleva, setSleva] = useState('')
   const [skopirovano, setSkopirovano] = useState(false)
+  const [zakaznici, setZakaznici] = useState<{ jmeno: string; adresa?: string; email?: string }[]>([])
+  const [zobrazNavrhy, setZobrazNavrhy] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
   const [emailAdresa, setEmailAdresa] = useState('')
   const [emailZprava, setEmailZprava] = useState('')
@@ -51,12 +54,14 @@ export default function NabidkaPage() {
     if (!nactena) { router.push('/'); return }
     setNabidka(nactena)
     setProfil(nactiProfil())
+    setZakaznici(nactiZakazniky())
     document.title = nactena.cislo ? `Nabídka č. ${nactena.cislo} — Řemeslník` : 'Nabídka — Řemeslník'
     if (nactena.zakaznik) {
       setZakaznikJmeno(nactena.zakaznik.jmeno)
       setZakaznikAdresa(nactena.zakaznik.adresa ?? '')
       setZakaznikEmail(nactena.zakaznik.email ?? '')
     }
+    if (nactena.sleva_procento) setSleva(String(nactena.sleva_procento))
   }, [router])
 
   if (!nabidka) return (
@@ -193,13 +198,17 @@ export default function NabidkaPage() {
       ...nabidka,
       polozky: sestavPolozky(),
       zakaznik: sestavZakaznika(),
+      sleva_procento: slevaProc || undefined,
     }
     ulozNabidku(aktualniNabidka)
     router.push('/nabidka/tisk')
   }
 
   const polozky = sestavPolozky()
-  const celkem = polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
+  const celkemBrutto = polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
+  const slevaProc = Math.min(Math.max(parseFloat(sleva) || 0, 0), 100)
+  const slevaKc = Math.round(celkemBrutto * slevaProc / 100)
+  const celkem = celkemBrutto - slevaKc
   const pocetCervenych = polozky.filter(p => p.jistota_ceny === 'cervena').length
   const platnost = platnostInfo(nabidka.datum)
 
@@ -335,12 +344,36 @@ export default function NabidkaPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
         <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Zákazník (volitelné)</p>
         <div className="space-y-2">
-          <input
-            value={zakaznikJmeno}
-            onChange={e => setZakaznikJmeno(e.target.value)}
-            placeholder="Jméno zákazníka"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-          />
+          <div className="relative">
+            <input
+              value={zakaznikJmeno}
+              onChange={e => { setZakaznikJmeno(e.target.value); setZobrazNavrhy(true) }}
+              onFocus={() => setZobrazNavrhy(true)}
+              onBlur={() => setTimeout(() => setZobrazNavrhy(false), 150)}
+              placeholder="Jméno zákazníka"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            />
+            {zobrazNavrhy && zakaznikJmeno && zakaznici.filter(z => z.jmeno.toLowerCase().includes(zakaznikJmeno.toLowerCase()) && z.jmeno !== zakaznikJmeno).length > 0 && (
+              <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                {zakaznici.filter(z => z.jmeno.toLowerCase().includes(zakaznikJmeno.toLowerCase()) && z.jmeno !== zakaznikJmeno).slice(0, 4).map(z => (
+                  <button
+                    key={z.jmeno}
+                    onMouseDown={() => {
+                      setZakaznikJmeno(z.jmeno)
+                      setZakaznikAdresa(z.adresa ?? '')
+                      setZakaznikEmail(z.email ?? '')
+                      if (!emailAdresa && z.email) setEmailAdresa(z.email)
+                      setZobrazNavrhy(false)
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 text-gray-700"
+                  >
+                    <span className="font-medium">{z.jmeno}</span>
+                    {z.adresa && <span className="text-gray-400 text-xs ml-2">{z.adresa}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <input
             value={zakaznikAdresa}
             onChange={e => setZakaznikAdresa(e.target.value)}
@@ -362,6 +395,18 @@ export default function NabidkaPage() {
 
       {/* Souhrn */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        {slevaProc > 0 && (
+          <div className="flex justify-between items-center text-sm text-gray-400 mb-1">
+            <span>Mezisoučet</span>
+            <span>{formatujCenu(Math.round(celkemBrutto))}</span>
+          </div>
+        )}
+        {slevaProc > 0 && (
+          <div className="flex justify-between items-center text-sm text-green-600 mb-1">
+            <span>Sleva {slevaProc} %</span>
+            <span>−{formatujCenu(slevaKc)}</span>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <span className="text-gray-600 text-sm">Celkem bez DPH</span>
           <div className="flex items-center gap-3">
@@ -390,6 +435,19 @@ export default function NabidkaPage() {
         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
           <span className="text-gray-400 text-xs">Záloha {ZALOHOVE_PROCENTO} %</span>
           <span className="text-xs text-gray-500">{formatujCenu(Math.round(celkem * ZALOHOVE_PROCENTO / 100))}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+          <span className="text-xs text-gray-400 shrink-0">Sleva %</span>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={sleva}
+            onChange={e => setSleva(e.target.value)}
+            placeholder="0"
+            className="w-20 rounded-lg border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-right"
+          />
+          <span className="text-xs text-gray-400">%</span>
         </div>
         {nabidka.doba_realizace && (
           <p className="text-xs text-gray-400 mt-2">Odhadovaná doba: {nabidka.doba_realizace}</p>

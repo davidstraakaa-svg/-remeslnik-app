@@ -14,12 +14,13 @@ export function OborSelect({ value, onChange }: Props) {
           <button
             key={o.id}
             onClick={() => onChange(o.id)}
-            className={`py-3 px-4 rounded-xl border-2 text-sm font-medium transition-all ${
+            className={`py-3 px-4 rounded-xl border-2 text-sm font-medium transition-all flex items-center gap-2 ${
               value === o.id
                 ? 'border-orange-500 bg-orange-50 text-orange-700'
                 : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
             }`}
           >
+            <span className="text-base">{o.ikona}</span>
             {o.label}
           </button>
         ))}

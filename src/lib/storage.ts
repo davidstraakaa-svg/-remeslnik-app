@@ -64,3 +64,11 @@ export function smazZHistorie(cislo: string): void {
   const nove = nactiHistorii().filter(n => n.cislo !== cislo)
   localStorage.setItem(KLIC_HISTORIE, JSON.stringify(nove))
 }
+
+export function nactiZakazniky(): { jmeno: string; adresa?: string; email?: string }[] {
+  const zakaznici = new Map<string, { jmeno: string; adresa?: string; email?: string }>()
+  nactiHistorii().forEach(n => {
+    if (n.zakaznik?.jmeno) zakaznici.set(n.zakaznik.jmeno, n.zakaznik)
+  })
+  return Array.from(zakaznici.values())
+}

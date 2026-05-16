@@ -32,6 +32,7 @@ export type Nabidka = {
   aktivni_varianta?: number
   polozky: Polozka[]
   poznamka?: string
+  sleva_procento?: number
 }
 
 export type Profil = {

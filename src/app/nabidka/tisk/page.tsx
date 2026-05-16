@@ -28,7 +28,10 @@ export default function TiskPage() {
   if (!nabidka) return null
 
   const dnes = new Date()
-  const celkemBezDph = nabidka.polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
+  const brutto = nabidka.polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
+  const slevaProc = nabidka.sleva_procento ?? 0
+  const slevaKc = Math.round(brutto * slevaProc / 100)
+  const celkemBezDph = brutto - slevaKc
   const dph = profil?.platce_dph ? celkemBezDph * SAZBA_DPH : null
   const celkemSDph = dph !== null ? celkemBezDph + dph : null
 
@@ -139,7 +142,19 @@ export default function TiskPage() {
         {/* Souhrn */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
           <div style={{ minWidth: 240 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#6b7280', borderTop: '1px solid #e5e7eb' }}>
+            {slevaProc > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#9ca3af', borderTop: '1px solid #e5e7eb' }}>
+                  <span>Mezisoučet</span>
+                  <span>{formatujCenu(Math.round(brutto))}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#16a34a' }}>
+                  <span>Sleva {slevaProc} %</span>
+                  <span>−{formatujCenu(slevaKc)}</span>
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#6b7280', borderTop: slevaProc > 0 ? 'none' : '1px solid #e5e7eb' }}>
               <span>Celkem bez DPH</span>
               <span style={{ fontWeight: 600, color: '#111' }}>{formatujCenu(Math.round(celkemBezDph))}</span>
             </div>
