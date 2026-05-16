@@ -1,4 +1,4 @@
-import type { Nabidka, Profil } from '@/types'
+import type { Nabidka, Profil, Sablona } from '@/types'
 import { MAX_HISTORIE_NABIDEK } from '@/lib/constants'
 
 const KLIC_PROFIL = 'remeslnik_profil'
@@ -63,6 +63,25 @@ export function ulozDoHistorie(nabidka: Nabidka): void {
 export function smazZHistorie(cislo: string): void {
   const nove = nactiHistorii().filter(n => n.cislo !== cislo)
   localStorage.setItem(KLIC_HISTORIE, JSON.stringify(nove))
+}
+
+const KLIC_SABLONY = 'remeslnik_sablony'
+
+export function nactiSablony(): Sablona[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(KLIC_SABLONY)
+    return raw ? (JSON.parse(raw) as Sablona[]) : []
+  } catch { return [] }
+}
+
+export function ulozSablonu(sablona: Sablona): void {
+  const sablony = nactiSablony().filter(s => s.id !== sablona.id)
+  localStorage.setItem(KLIC_SABLONY, JSON.stringify([sablona, ...sablony].slice(0, 10)))
+}
+
+export function smazSablonu(id: string): void {
+  localStorage.setItem(KLIC_SABLONY, JSON.stringify(nactiSablony().filter(s => s.id !== id)))
 }
 
 export function nactiZakazniky(): { jmeno: string; adresa?: string; email?: string }[] {

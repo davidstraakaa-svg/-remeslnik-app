@@ -35,6 +35,15 @@ export type Nabidka = {
   sleva_procento?: number
 }
 
+export type Sablona = {
+  id: string
+  nazev: string
+  obor?: string
+  polozky: Polozka[]
+  doba_realizace?: string
+  poznamka?: string
+}
+
 export type Profil = {
   jmeno: string
   ico: string

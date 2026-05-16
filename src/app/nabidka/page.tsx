@@ -3,10 +3,10 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
-import { nactiNabidku, ulozNabidku, nactiProfil, nactiZakazniky } from '@/lib/storage'
+import { nactiNabidku, ulozNabidku, nactiProfil, nactiZakazniky, ulozSablonu } from '@/lib/storage'
 import { formatujCenu } from '@/lib/formatters'
 import { PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
-import type { Nabidka, Polozka, Profil } from '@/types'
+import type { Nabidka, Polozka, Profil, Sablona } from '@/types'
 
 const NAZVY_VARIANT = ['Ekonomická', 'Standardní', 'Prémiová']
 const BARVY_VARIANT = ['text-emerald-600 bg-emerald-50', 'text-orange-600 bg-orange-50', 'text-violet-600 bg-violet-50']
@@ -40,6 +40,9 @@ export default function NabidkaPage() {
   const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
   const [sleva, setSleva] = useState('')
   const [skopirovano, setSkopirovano] = useState(false)
+  const [zobrazUlozitSablonu, setZobrazUlozitSablonu] = useState(false)
+  const [nazevSablony, setNazevSablony] = useState('')
+  const [sablonaUlozena, setSablonaUlozena] = useState(false)
   const [zakaznici, setZakaznici] = useState<{ jmeno: string; adresa?: string; email?: string }[]>([])
   const [zobrazNavrhy, setZobrazNavrhy] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
@@ -146,6 +149,23 @@ export default function NabidkaPage() {
     })
   }
 
+  function ulozitJakoSablonu() {
+    if (!nazevSablony.trim()) return
+    const sablona: Sablona = {
+      id: Date.now().toString(),
+      nazev: nazevSablony.trim(),
+      obor: nabidka!.obor,
+      polozky: sestavPolozky(),
+      doba_realizace: nabidka!.doba_realizace,
+      poznamka: nabidka!.poznamka,
+    }
+    ulozSablonu(sablona)
+    setSablonaUlozena(true)
+    setZobrazUlozitSablonu(false)
+    setNazevSablony('')
+    setTimeout(() => setSablonaUlozena(false), 3000)
+  }
+
   function sestavZakaznika() {
     if (!zakaznikJmeno.trim()) return nabidka!.zakaznik
     return {
@@ -226,9 +246,26 @@ export default function NabidkaPage() {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Cenová nabídka</h1>
+          {sablonaUlozena && <p className="text-xs text-green-600 mt-0.5">Šablona uložena</p>}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {nabidka.cislo && <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>}
-            {nabidka.aktivni_varianta !== undefined && nabidka.varianty?.[nabidka.aktivni_varianta] && (
+            <button onClick={() => setZobrazUlozitSablonu(s => !s)} className="text-xs text-gray-400 hover:text-orange-500 mt-0.5 block">
+            Uložit jako šablonu
+          </button>
+          {zobrazUlozitSablonu && (
+            <div className="flex gap-2 mt-1">
+              <input
+                value={nazevSablony}
+                onChange={e => setNazevSablony(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && ulozitJakoSablonu()}
+                placeholder="Název šablony…"
+                autoFocus
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white"
+              />
+              <button onClick={ulozitJakoSablonu} className="text-xs bg-orange-500 text-white px-2 py-1 rounded-lg">Uložit</button>
+            </div>
+          )}
+          {nabidka.aktivni_varianta !== undefined && nabidka.varianty?.[nabidka.aktivni_varianta] && (
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${BARVY_VARIANT[nabidka.aktivni_varianta] ?? BARVY_VARIANT[2]}`}>
                 {NAZVY_VARIANT[nabidka.aktivni_varianta] ?? nabidka.varianty[nabidka.aktivni_varianta].nazev}
               </span>

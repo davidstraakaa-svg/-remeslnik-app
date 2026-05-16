@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { OborSelect } from '@/components/OborSelect'
-import { masProfil, ulozNabidku, ulozDoHistorie, dalsiCisloNabidky, nactiHistorii } from '@/lib/storage'
-import type { Nabidka, TypZakazky } from '@/types'
+import { masProfil, ulozNabidku, ulozDoHistorie, dalsiCisloNabidky, nactiHistorii, nactiSablony, smazSablonu } from '@/lib/storage'
+import type { Nabidka, Sablona, TypZakazky } from '@/types'
 
 const KLIC_FORMULAR = 'remeslnik_formular'
 
@@ -27,11 +27,13 @@ export default function HomePage() {
   const [fazeIndex, setFazeIndex] = useState(0)
   const [chyba, setChyba] = useState('')
   const [pocetNabidek, setPocetNabidek] = useState(0)
+  const [sablony, setSablony] = useState<Sablona[]>([])
   const odeslanoRef = useRef(false)
 
   useEffect(() => {
     if (!masProfil()) router.push('/onboarding')
     setPocetNabidek(nactiHistorii().length)
+    setSablony(nactiSablony())
     document.title = 'Nová nabídka — Řemeslník'
   }, [router])
 
@@ -113,6 +115,26 @@ export default function HomePage() {
     }
   }
 
+  function pouzitSablonu(sablona: Sablona) {
+    const cislo = dalsiCisloNabidky()
+    const nabidka: Nabidka = {
+      cislo,
+      obor: sablona.obor,
+      datum: new Date().toISOString(),
+      polozky: sablona.polozky,
+      doba_realizace: sablona.doba_realizace,
+      poznamka: sablona.poznamka,
+    }
+    ulozNabidku(nabidka)
+    ulozDoHistorie(nabidka)
+    router.push('/nabidka')
+  }
+
+  function smazatSablonu(id: string) {
+    smazSablonu(id)
+    setSablony(nactiSablony())
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8 max-w-lg mx-auto">
       <header className="flex justify-between items-start mb-8">
@@ -134,6 +156,23 @@ export default function HomePage() {
           </button>
         </div>
       </header>
+
+      {sablony.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Šablony</p>
+          <div className="flex flex-wrap gap-2">
+            {sablony.map(s => (
+              <div key={s.id} className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-3 py-2">
+                <button onClick={() => pouzitSablonu(s)} className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+                  {s.nazev}
+                </button>
+                <button onClick={() => smazatSablonu(s.id)} className="text-gray-300 hover:text-red-400 text-xs ml-1 leading-none">✕</button>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Kliknutím vytvoříš nabídku ze šablony bez AI.</p>
+        </div>
+      )}
 
       <div className="space-y-6">
         <OborSelect value={obor} onChange={setObor} />
