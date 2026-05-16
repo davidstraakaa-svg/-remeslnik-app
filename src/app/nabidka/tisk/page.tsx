@@ -56,6 +56,7 @@ export default function TiskPage() {
         <TiskHlavicka
           profil={profil}
           cislo={nabidka.cislo}
+          zakaznik={nabidka.zakaznik}
           dnes={dnes}
           platnostDni={PLATNOST_NABIDKY_DNI}
         />
@@ -69,6 +70,7 @@ export default function TiskPage() {
           dph={dph}
           celkemSDph={celkemSDph}
           zalovaProcento={ZALOHOVE_PROCENTO}
+          dobaRealizace={nabidka.doba_realizace}
         />
 
         {nabidka.poznamka && (
@@ -84,35 +86,57 @@ export default function TiskPage() {
 }
 
 function TiskHlavicka({
-  profil, cislo, dnes, platnostDni,
+  profil, cislo, zakaznik, dnes, platnostDni,
 }: {
   profil: Profil | null
   cislo?: string
+  zakaznik?: { jmeno: string; adresa?: string }
   dnes: Date
   platnostDni: number
 }) {
   return (
-    <div className="flex justify-between">
-      <div>
-        <h1 className="text-2xl font-bold mb-1">CENOVÁ NABÍDKA</h1>
-        {cislo && <p className="text-gray-500 text-xs">Číslo nabídky: {cislo}</p>}
-        <p className="text-gray-500 text-xs">Datum vystavení: {formatujDatum(dnes)}</p>
-        <p className="text-gray-500 text-xs">Platnost: {formatujDatum(pridejDny(dnes, platnostDni))}</p>
-      </div>
-      <div className="text-right text-gray-600 text-xs">
-        <p className="font-semibold text-gray-900 text-sm mb-1">Dodavatel</p>
-        {profil ? (
-          <>
-            <p>{profil.jmeno}</p>
-            {/* P158 – odkaz na ARES pro ověření firmy */}
-            <p>IČO: {profil.ico}</p>
-            {profil.telefon && <p>{profil.telefon}</p>}
-            {profil.email && <p>{profil.email}</p>}
-            {!profil.platce_dph && <p className="mt-1 italic">Nejsem plátce DPH</p>}
-          </>
-        ) : (
-          <p className="text-gray-400">Profil nevyplněn</p>
-        )}
+    <div>
+      {/* P45 – logo firmy */}
+      {profil?.logo && (
+        <div className="mb-4">
+          <img src={profil.logo} alt="Logo" style={{ maxHeight: 60, maxWidth: 200 }} />
+        </div>
+      )}
+
+      <div className="flex justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">CENOVÁ NABÍDKA</h1>
+          {cislo && <p className="text-gray-500 text-xs">Číslo nabídky: {cislo}</p>}
+          <p className="text-gray-500 text-xs">Datum vystavení: {formatujDatum(dnes)}</p>
+          <p className="text-gray-500 text-xs">Platnost: {formatujDatum(pridejDny(dnes, platnostDni))}</p>
+        </div>
+
+        <div className="text-xs text-gray-600 flex gap-12">
+          {/* Dodavatel */}
+          <div className="text-right">
+            <p className="font-semibold text-gray-900 text-sm mb-1">Dodavatel</p>
+            {profil ? (
+              <>
+                <p>{profil.jmeno}</p>
+                <p>IČO: {profil.ico}</p>
+                {profil.telefon && <p>{profil.telefon}</p>}
+                {profil.email && <p>{profil.email}</p>}
+                {!profil.platce_dph && <p className="mt-1 italic">Nejsem plátce DPH</p>}
+              </>
+            ) : (
+              <p className="text-gray-400">Profil nevyplněn</p>
+            )}
+          </div>
+
+          {/* P46 – zákazník */}
+          {zakaznik && (
+            <div>
+              <p className="font-semibold text-gray-900 text-sm mb-1">Odběratel</p>
+              <p>{zakaznik.jmeno}</p>
+              {zakaznik.adresa && <p>{zakaznik.adresa}</p>}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -134,7 +158,6 @@ function TabulkaPolozek({ nabidka }: { nabidka: Nabidka }) {
       <tbody>
         {nabidka.polozky.map((p, i) => {
           const conf = JISTOTA_CONFIG[p.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
-          // P121 – zaokrouhlení na celé koruny (žádná falešná přesnost)
           const celkem = Math.round(p.mnozstvi * p.jednotkova_cena)
           return (
             <tr key={i} className="border-b border-gray-100">
@@ -154,11 +177,12 @@ function TabulkaPolozek({ nabidka }: { nabidka: Nabidka }) {
   )
 }
 
-function TiskSouhrn({ celkemBezDph, dph, celkemSDph, zalovaProcento }: {
+function TiskSouhrn({ celkemBezDph, dph, celkemSDph, zalovaProcento, dobaRealizace }: {
   celkemBezDph: number
   dph: number | null
   celkemSDph: number | null
   zalovaProcento: number
+  dobaRealizace?: string
 }) {
   const zalova = Math.round(celkemBezDph * zalovaProcento / 100)
   return (
@@ -183,6 +207,9 @@ function TiskSouhrn({ celkemBezDph, dph, celkemSDph, zalovaProcento }: {
         <p className="text-xs text-gray-400 mt-2">
           Záloha {zalovaProcento} % ({formatujCenu(zalova)}) splatná před zahájením prací
         </p>
+        {dobaRealizace && (
+          <p className="text-xs text-gray-400 mt-1">Odhadovaná doba realizace: {dobaRealizace}</p>
+        )}
       </div>
     </div>
   )
@@ -192,16 +219,10 @@ function TiskPaticka({ profil }: { profil: Profil | null }) {
   return (
     <footer className="mt-10 pt-3 border-t border-gray-200 text-xs text-gray-400 space-y-1">
       <p>Legenda: ● ověřená cena (DEK/Hornbach) &nbsp; ◐ regionální odhad &nbsp; ○ zkontrolujte před odesláním</p>
-      {/* P57 – záruční podmínky */}
       <p>Záruka na provedené práce: 24 měsíců (§ 2113 a násl. zákona č. 89/2012 Sb.). Na materiál platí záruka výrobce.</p>
-      {/* P58 – platební podmínky */}
       <p>Splatnost zálohy: 3 pracovní dny před zahájením. Doplatek: do 14 dní od předání díla. Platba převodem.</p>
-      {/* P77 – nezávaznost nabídky */}
       <p>Tato nabídka je nezávazným odhadem. Konečná cena může být upřesněna po prohlídce místa realizace.</p>
-      {/* P158 – ARES ověření */}
-      {profil?.ico && (
-        <p>Ověřit dodavatele: ares.gov.cz (IČO: {profil.ico})</p>
-      )}
+      {profil?.ico && <p>Ověřit dodavatele: ares.gov.cz (IČO: {profil.ico})</p>}
     </footer>
   )
 }

@@ -12,6 +12,8 @@ export type Polozka = {
 
 export type Nabidka = {
   cislo?: string
+  zakaznik?: { jmeno: string; adresa?: string }
+  doba_realizace?: string
   polozky: Polozka[]
   poznamka?: string
 }
@@ -22,4 +24,5 @@ export type Profil = {
   telefon: string
   email: string
   platce_dph: boolean
+  logo?: string
 }

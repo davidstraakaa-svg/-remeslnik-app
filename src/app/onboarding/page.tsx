@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { nactiProfil, ulozProfil } from '@/lib/storage'
 import { validujICO } from '@/lib/validace'
@@ -14,11 +14,35 @@ const PRAZDNY_PROFIL: Profil = {
   platce_dph: false,
 }
 
+// P45 – komprese loga na max 80px výšku, JPEG 0.75
+function komprimujLogo(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const maxVyska = 80
+      const pomer = Math.min(1, maxVyska / img.height)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * pomer)
+      canvas.height = Math.round(img.height * pomer)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('Canvas error')); return }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', 0.75))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Nepodařilo se načíst obrázek')) }
+    img.src = url
+  })
+}
+
 export default function OnboardingPage() {
   const router = useRouter()
   const [profil, setProfil] = useState<Profil>(PRAZDNY_PROFIL)
   const [chyba, setChyba] = useState('')
   const [icoVarovani, setIcoVarovani] = useState('')
+  const [logoNacitani, setLogoNacitani] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const existujici = nactiProfil()
@@ -27,11 +51,28 @@ export default function OnboardingPage() {
 
   function aktualizuj(pole: keyof Profil, hodnota: string | boolean) {
     setProfil(p => ({ ...p, [pole]: hodnota }))
-    // P37 – live validace IČO
     if (pole === 'ico' && typeof hodnota === 'string' && hodnota.length === 8) {
       setIcoVarovani(validujICO(hodnota) ? '' : 'IČO neprošlo kontrolním součtem — zkontroluj číslo')
     } else if (pole === 'ico') {
       setIcoVarovani('')
+    }
+  }
+
+  async function nahratLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setChyba('Logo je příliš velké — max 5 MB')
+      return
+    }
+    setLogoNacitani(true)
+    try {
+      const base64 = await komprimujLogo(file)
+      setProfil(p => ({ ...p, logo: base64 }))
+    } catch {
+      setChyba('Nepodařilo se načíst logo')
+    } finally {
+      setLogoNacitani(false)
     }
   }
 
@@ -51,6 +92,45 @@ export default function OnboardingPage() {
       </header>
 
       <div className="space-y-4 mb-6">
+        {/* P45 – logo firmy */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Logo firmy</label>
+          <div className="flex items-center gap-4">
+            {profil.logo ? (
+              <img src={profil.logo} alt="Logo" className="h-12 object-contain rounded border border-gray-200 bg-white px-2" />
+            ) : (
+              <div className="h-12 w-24 rounded border-2 border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
+                bez loga
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoNacitani}
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+              >
+                {logoNacitani ? 'Nahrávám…' : profil.logo ? 'Změnit' : 'Nahrát logo'}
+              </button>
+              {profil.logo && (
+                <button
+                  onClick={() => setProfil(p => ({ ...p, logo: undefined }))}
+                  className="text-sm text-gray-400 hover:text-gray-600"
+                >
+                  Odebrat
+                </button>
+              )}
+            </div>
+          </div>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={nahratLogo}
+            className="hidden"
+          />
+          <p className="text-xs text-gray-400 mt-1">PNG, JPG, max 5 MB — zobrazí se v PDF nabídce</p>
+        </div>
+
         <FormPole
           label="Jméno / název firmy"
           povinne
@@ -69,7 +149,6 @@ export default function OnboardingPage() {
             maxLength={8}
             inputMode="numeric"
           />
-          {/* P37 – varování (ne blokování) při neplatném IČO */}
           {icoVarovani && (
             <p className="text-amber-600 text-xs mt-1">{icoVarovani}</p>
           )}

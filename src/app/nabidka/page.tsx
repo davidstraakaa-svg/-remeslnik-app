@@ -11,14 +11,20 @@ export default function NabidkaPage() {
   const router = useRouter()
   const [nabidka, setNabidka] = useState<Nabidka | null>(null)
   const [upravy, setUpravy] = useState<Record<number, Partial<Polozka>>>({})
+  const [zakaznikJmeno, setZakaznikJmeno] = useState('')
+  const [zakaznikAdresa, setZakaznikAdresa] = useState('')
+  const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
 
   useEffect(() => {
     const nactena = nactiNabidku()
     if (!nactena) { router.push('/'); return }
     setNabidka(nactena)
+    if (nactena.zakaznik) {
+      setZakaznikJmeno(nactena.zakaznik.jmeno)
+      setZakaznikAdresa(nactena.zakaznik.adresa ?? '')
+    }
   }, [router])
 
-  // P104 – prázdný stav s vysvětlením (router.push se nestihne vykreslit okamžitě)
   if (!nabidka) return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="text-center">
@@ -40,7 +46,6 @@ export default function NabidkaPage() {
     }))
   }
 
-  // P131 – obnovení původní AI ceny pro danou položku
   function obnovitPuvodni(index: number) {
     setUpravy(prev => {
       const nove = { ...prev }
@@ -54,7 +59,11 @@ export default function NabidkaPage() {
   }
 
   function prejitNaTisk() {
-    const aktualniNabidka: Nabidka = { ...nabidka, polozky: sestavPolozky() }
+    const aktualniNabidka: Nabidka = {
+      ...nabidka,
+      polozky: sestavPolozky(),
+      zakaznik: zakaznikJmeno.trim() ? { jmeno: zakaznikJmeno.trim(), adresa: zakaznikAdresa.trim() || undefined } : undefined,
+    }
     ulozNabidku(aktualniNabidka)
     router.push('/nabidka/tisk')
   }
@@ -62,6 +71,13 @@ export default function NabidkaPage() {
   const polozky = sestavPolozky()
   const celkem = polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
   const pocetCervenych = polozky.filter(p => p.jistota_ceny === 'cervena').length
+
+  // P183 – breakdown podle typu pro interní přehled marže
+  const breakdown = polozky.reduce<Record<string, number>>((acc, p) => {
+    const klic = p.typ?.toLowerCase() ?? 'ostatní'
+    acc[klic] = (acc[klic] ?? 0) + p.mnozstvi * p.jednotkova_cena
+    return acc
+  }, {})
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-6 max-w-lg mx-auto">
@@ -71,9 +87,7 @@ export default function NabidkaPage() {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Cenová nabídka</h1>
-          {nabidka.cislo && (
-            <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>
-          )}
+          {nabidka.cislo && <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>}
         </div>
       </header>
 
@@ -97,16 +111,55 @@ export default function NabidkaPage() {
       </div>
 
       {nabidka.poznamka && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-sm text-blue-700">
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 text-sm text-blue-700">
           {nabidka.poznamka}
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="flex justify-between items-center">
-          <span className="text-gray-600">Celkem bez DPH</span>
-          <span className="text-xl font-bold text-gray-900">{formatujCenu(celkem)}</span>
+      {/* P46 – zákazníkovy údaje pro PDF */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Zákazník (volitelné)</p>
+        <div className="space-y-2">
+          <input
+            value={zakaznikJmeno}
+            onChange={e => setZakaznikJmeno(e.target.value)}
+            placeholder="Jméno zákazníka"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+          />
+          <input
+            value={zakaznikAdresa}
+            onChange={e => setZakaznikAdresa(e.target.value)}
+            placeholder="Adresa (ulice, město)"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+          />
         </div>
+      </div>
+
+      {/* P183 – souhrn a interní breakdown */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-gray-600">Celkem bez DPH</span>
+          <span className="text-xl font-bold text-gray-900">{formatujCenu(Math.round(celkem))}</span>
+        </div>
+        {nabidka.doba_realizace && (
+          <p className="text-xs text-gray-400 mb-2">Odhadovaná doba: {nabidka.doba_realizace}</p>
+        )}
+        <button
+          onClick={() => setZobrazBreakdown(b => !b)}
+          className="text-xs text-orange-600 hover:text-orange-700"
+        >
+          {zobrazBreakdown ? 'Skrýt' : 'Zobrazit'} rozpad nákladů
+        </button>
+        {zobrazBreakdown && (
+          <div className="mt-3 space-y-1 border-t border-gray-100 pt-3">
+            {Object.entries(breakdown).map(([typ, castka]) => (
+              <div key={typ} className="flex justify-between text-xs text-gray-500">
+                <span className="capitalize">{typ}</span>
+                <span>{formatujCenu(Math.round(castka))} ({Math.round(castka / celkem * 100)} %)</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <button
