@@ -142,35 +142,75 @@ export default function TiskPage() {
         <div style={{ height: 3, background: 'linear-gradient(90deg, #ea580c, #fb923c)', borderRadius: 2, marginBottom: 20 }} />
 
         {/* Tabulka */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
-          <thead>
-            <tr style={{ background: '#1a1a1a' }}>
-              <th style={{ textAlign: 'left', padding: '9px 12px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>Popis</th>
-              <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 48 }}>Mn.</th>
-              <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 44 }}>Jed.</th>
-              <th style={{ textAlign: 'right', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 88 }}>Cena/jed.</th>
-              <th style={{ textAlign: 'right', padding: '9px 12px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 88 }}>Celkem</th>
-              <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', width: 32 }}>●</th>
-            </tr>
-          </thead>
-          <tbody>
-            {nabidka.polozky.map((p, i) => {
-              const conf = JISTOTA_CONFIG[p.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
-              const celkem = Math.round(p.mnozstvi * p.jednotkova_cena)
-              const isEven = i % 2 === 0
-              return (
-                <tr key={i} style={{ background: isEven ? '#ffffff' : '#f9fafb' }}>
-                  <td style={{ padding: '8px 12px', fontSize: 12, borderBottom: '1px solid #f0f0f0' }}>{p.popis}</td>
-                  <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 12, borderBottom: '1px solid #f0f0f0' }}>{p.mnozstvi}</td>
-                  <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 12, borderBottom: '1px solid #f0f0f0', color: '#6b7280' }}>{p.jednotka}</td>
-                  <td style={{ padding: '8px 8px', textAlign: 'right', fontSize: 12, borderBottom: '1px solid #f0f0f0', color: '#6b7280' }}>{formatujCenu(Math.round(p.jednotkova_cena))}</td>
-                  <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: 12, fontWeight: 700, borderBottom: '1px solid #f0f0f0' }}>{formatujCenu(celkem)}</td>
-                  <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 14, borderBottom: '1px solid #f0f0f0', color: conf.tiskBarva }}>{conf.tiskSymbol}</td>
+        {(() => {
+          const SKUPINY = ['práce', 'materiál', 'odvoz'] as const
+          type SkupinaKey = typeof SKUPINY[number] | 'ostatní'
+          const NAZVY: Record<SkupinaKey, string> = { 'práce': 'Práce', 'materiál': 'Materiál', 'odvoz': 'Odvoz a likvidace', 'ostatní': 'Ostatní' }
+          const grouped = new Map<SkupinaKey, typeof nabidka.polozky>()
+          for (const p of nabidka.polozky) {
+            const key: SkupinaKey = (SKUPINY as readonly string[]).includes(p.typ) ? p.typ as SkupinaKey : 'ostatní'
+            if (!grouped.has(key)) grouped.set(key, [])
+            grouped.get(key)!.push(p)
+          }
+          const poradiSkupin: SkupinaKey[] = ([...SKUPINY, 'ostatní'] as SkupinaKey[]).filter(k => grouped.has(k))
+          const vicSkupin = poradiSkupin.length > 1
+          let globalRow = 0
+          return (
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
+              <thead>
+                <tr style={{ background: '#1a1a1a' }}>
+                  <th style={{ textAlign: 'left', padding: '9px 12px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>Popis</th>
+                  <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 48 }}>Mn.</th>
+                  <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 44 }}>Jed.</th>
+                  <th style={{ textAlign: 'right', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 88 }}>Cena/jed.</th>
+                  <th style={{ textAlign: 'right', padding: '9px 12px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 88 }}>Celkem</th>
+                  <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', width: 32 }}>●</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {poradiSkupin.map(skupina => {
+                  const polozky = grouped.get(skupina)!
+                  const subtotal = polozky.reduce((s, p) => s + Math.round(p.mnozstvi * p.jednotkova_cena), 0)
+                  return (
+                    <>
+                      {vicSkupin && (
+                        <tr key={`hdr-${skupina}`} style={{ background: '#f3f4f6' }}>
+                          <td colSpan={6} style={{ padding: '6px 12px', fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {NAZVY[skupina]}
+                          </td>
+                        </tr>
+                      )}
+                      {polozky.map((p, i) => {
+                        const conf = JISTOTA_CONFIG[p.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
+                        const celkem = Math.round(p.mnozstvi * p.jednotkova_cena)
+                        const isEven = globalRow++ % 2 === 0
+                        return (
+                          <tr key={`${skupina}-${i}`} style={{ background: isEven ? '#ffffff' : '#f9fafb' }}>
+                            <td style={{ padding: '8px 12px', fontSize: 12, borderBottom: '1px solid #f0f0f0' }}>{p.popis}</td>
+                            <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 12, borderBottom: '1px solid #f0f0f0' }}>{p.mnozstvi}</td>
+                            <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 12, borderBottom: '1px solid #f0f0f0', color: '#6b7280' }}>{p.jednotka}</td>
+                            <td style={{ padding: '8px 8px', textAlign: 'right', fontSize: 12, borderBottom: '1px solid #f0f0f0', color: '#6b7280' }}>{formatujCenu(Math.round(p.jednotkova_cena))}</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: 12, fontWeight: 700, borderBottom: '1px solid #f0f0f0' }}>{formatujCenu(celkem)}</td>
+                            <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 14, borderBottom: '1px solid #f0f0f0', color: conf.tiskBarva }}>{conf.tiskSymbol}</td>
+                          </tr>
+                        )
+                      })}
+                      {vicSkupin && (
+                        <tr key={`sub-${skupina}`} style={{ background: '#fafafa' }}>
+                          <td colSpan={4} style={{ padding: '5px 12px', fontSize: 11, color: '#6b7280', fontStyle: 'italic', borderBottom: '1px solid #e5e7eb' }}>
+                            Mezisoučet — {NAZVY[skupina].toLowerCase()}
+                          </td>
+                          <td style={{ padding: '5px 12px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#374151', borderBottom: '1px solid #e5e7eb' }}>{formatujCenu(subtotal)}</td>
+                          <td style={{ borderBottom: '1px solid #e5e7eb' }} />
+                        </tr>
+                      )}
+                    </>
+                  )
+                })}
+              </tbody>
+            </table>
+          )
+        })()}
 
         {/* Souhrn */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>

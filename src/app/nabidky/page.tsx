@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { nactiHistorii, smazZHistorie, ulozNabidku } from '@/lib/storage'
+import { nactiHistorii, smazZHistorie, ulozNabidku, aktualizujStavVHistorii } from '@/lib/storage'
 import { formatujCenu, formatujDatum } from '@/lib/formatters'
 import { OBORY, PLATNOST_NABIDKY_DNI } from '@/lib/constants'
-import type { Nabidka } from '@/types'
+import type { Nabidka, StavNabidky } from '@/types'
+
+const STAVY: { id: StavNabidky; label: string; barva: string }[] = [
+  { id: 'čeká', label: 'Čeká', barva: 'bg-gray-100 text-gray-600' },
+  { id: 'přijata', label: 'Přijata', barva: 'bg-green-100 text-green-700' },
+  { id: 'odmítnuta', label: 'Odmítnuta', barva: 'bg-red-100 text-red-600' },
+  { id: 'dokončena', label: 'Dokončena', barva: 'bg-blue-100 text-blue-700' },
+]
 
 const LABEL_OBORU: Record<string, string> = Object.fromEntries(OBORY.map(o => [o.id, o.label]))
 
@@ -24,6 +31,7 @@ export default function NabidkyPage() {
   const [historie, setHistorie] = useState<Nabidka[]>([])
   const [mazaniCislo, setMazaniCislo] = useState<string | null>(null)
   const [hledani, setHledani] = useState('')
+  const [menimStavCislo, setMenimStavCislo] = useState<string | null>(null)
 
   useEffect(() => {
     setHistorie(nactiHistorii())
@@ -39,6 +47,12 @@ export default function NabidkyPage() {
     smazZHistorie(cislo)
     setHistorie(nactiHistorii())
     setMazaniCislo(null)
+  }
+
+  function zmenitStav(cislo: string, stav: StavNabidky) {
+    aktualizujStavVHistorii(cislo, stav)
+    setHistorie(nactiHistorii())
+    setMenimStavCislo(null)
   }
 
   const filtr = hledani.toLowerCase().trim()
@@ -117,6 +131,29 @@ export default function NabidkyPage() {
                         )}
                         {platnost && (
                           <span className={`text-xs font-medium ${platnost.barva}`}>{platnost.text}</span>
+                        )}
+                        {nabidka.cislo && (
+                          <div className="relative">
+                            <button
+                              onClick={() => setMenimStavCislo(menimStavCislo === nabidka.cislo ? null : nabidka.cislo!)}
+                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${(STAVY.find(s => s.id === nabidka.stav) ?? STAVY[0]).barva}`}
+                            >
+                              {(STAVY.find(s => s.id === nabidka.stav) ?? STAVY[0]).label} ▾
+                            </button>
+                            {menimStavCislo === nabidka.cislo && (
+                              <div className="absolute z-10 top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-32">
+                                {STAVY.map(s => (
+                                  <button
+                                    key={s.id}
+                                    onClick={() => zmenitStav(nabidka.cislo!, s.id)}
+                                    className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 font-medium ${s.barva.split(' ')[1]}`}
+                                  >
+                                    {s.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                       {nabidka.zakaznik?.jmeno && (

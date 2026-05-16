@@ -60,6 +60,11 @@ export function ulozDoHistorie(nabidka: Nabidka): void {
   localStorage.setItem(KLIC_HISTORIE, JSON.stringify(nova))
 }
 
+export function aktualizujStavVHistorii(cislo: string, stav: import('@/types').StavNabidky): void {
+  const nove = nactiHistorii().map(n => n.cislo === cislo ? { ...n, stav } : n)
+  localStorage.setItem(KLIC_HISTORIE, JSON.stringify(nove))
+}
+
 export function smazZHistorie(cislo: string): void {
   const nove = nactiHistorii().filter(n => n.cislo !== cislo)
   localStorage.setItem(KLIC_HISTORIE, JSON.stringify(nove))

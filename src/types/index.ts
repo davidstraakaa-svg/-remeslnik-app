@@ -1,5 +1,7 @@
 export type JistotaCeny = 'zelena' | 'oranzova' | 'cervena'
 
+export type StavNabidky = 'čeká' | 'přijata' | 'odmítnuta' | 'dokončena'
+
 export type TypZakazky = 'rekonstrukce' | 'novostavba'
 
 export type Polozka = {
@@ -33,6 +35,7 @@ export type Nabidka = {
   polozky: Polozka[]
   poznamka?: string
   sleva_procento?: number
+  stav?: StavNabidky
 }
 
 export type Sablona = {
