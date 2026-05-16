@@ -7,9 +7,10 @@ type Props = {
   polozka: Polozka
   upravena: boolean
   onZmena: (field: keyof Polozka, value: number) => void
+  onObnovit: () => void
 }
 
-export function PolozkaRadek({ polozka, upravena, onZmena }: Props) {
+export function PolozkaRadek({ polozka, upravena, onZmena, onObnovit }: Props) {
   const [otevrena, setOtevrena] = useState(false)
   const conf = JISTOTA_CONFIG[polozka.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
   const celkem = polozka.mnozstvi * polozka.jednotkova_cena
@@ -25,7 +26,7 @@ export function PolozkaRadek({ polozka, upravena, onZmena }: Props) {
           <p className="text-sm font-medium text-gray-900 truncate">{polozka.popis}</p>
           <p className="text-xs text-gray-400">
             {polozka.mnozstvi} {polozka.jednotka} × {formatujCenu(polozka.jednotkova_cena)}
-            {upravena && ' · upraveno'}
+            {upravena && <span className="text-orange-500"> · upraveno</span>}
           </p>
         </div>
         <span className="text-sm font-semibold text-gray-900 flex-shrink-0">
@@ -63,9 +64,21 @@ export function PolozkaRadek({ polozka, upravena, onZmena }: Props) {
               <p className="text-sm font-bold text-gray-900">{formatujCenu(celkem)}</p>
             </div>
           </div>
-          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${conf.badge}`}>
-            <span className={`w-2 h-2 rounded-full ${conf.dot}`} />
-            {conf.label}: {polozka.zdroj_ceny}
+
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${conf.badge}`}>
+              <span className={`w-2 h-2 rounded-full ${conf.dot}`} />
+              {conf.label}: {polozka.zdroj_ceny}
+            </div>
+            {/* P131 – obnovení původní AI ceny */}
+            {upravena && (
+              <button
+                onClick={e => { e.stopPropagation(); onObnovit() }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                Obnovit původní cenu
+              </button>
+            )}
           </div>
         </div>
       )}

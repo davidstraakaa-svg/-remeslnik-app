@@ -18,13 +18,35 @@ export default function NabidkaPage() {
     setNabidka(nactena)
   }, [router])
 
-  if (!nabidka) return null
+  // P104 – prázdný stav s vysvětlením (router.push se nestihne vykreslit okamžitě)
+  if (!nabidka) return (
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="text-center">
+        <p className="text-gray-500 mb-4">Nabídka nebyla nalezena nebo vypršela.</p>
+        <button
+          onClick={() => router.push('/')}
+          className="bg-orange-500 text-white px-6 py-3 rounded-xl text-sm font-medium"
+        >
+          Vytvořit novou nabídku
+        </button>
+      </div>
+    </main>
+  )
 
   function upravPolozku(index: number, field: keyof Polozka, hodnota: number) {
     setUpravy(prev => ({
       ...prev,
       [index]: { ...prev[index], [field]: hodnota, jistota_ceny: 'oranzova' },
     }))
+  }
+
+  // P131 – obnovení původní AI ceny pro danou položku
+  function obnovitPuvodni(index: number) {
+    setUpravy(prev => {
+      const nove = { ...prev }
+      delete nove[index]
+      return nove
+    })
   }
 
   function sestavPolozky(): Polozka[] {
@@ -47,7 +69,12 @@ export default function NabidkaPage() {
         <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-600 text-sm">
           ← Zpět
         </button>
-        <h1 className="text-xl font-bold text-gray-900">Cenová nabídka</h1>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-gray-900">Cenová nabídka</h1>
+          {nabidka.cislo && (
+            <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>
+          )}
+        </div>
       </header>
 
       {pocetCervenych > 0 && (
@@ -64,6 +91,7 @@ export default function NabidkaPage() {
             polozka={polozka}
             upravena={!!upravy[i]}
             onZmena={(field, hodnota) => upravPolozku(i, field, hodnota)}
+            onObnovit={() => obnovitPuvodni(i)}
           />
         ))}
       </div>

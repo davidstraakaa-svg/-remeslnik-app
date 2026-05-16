@@ -11,6 +11,7 @@ export type Polozka = {
 }
 
 export type Nabidka = {
+  cislo?: string
   polozky: Polozka[]
   poznamka?: string
 }

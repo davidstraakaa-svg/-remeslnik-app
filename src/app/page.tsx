@@ -1,9 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { OborSelect } from '@/components/OborSelect'
-import { masProfil } from '@/lib/storage'
+import { masProfil, ulozNabidku, dalsiCisloNabidky } from '@/lib/storage'
+
+const KLIC_FORMULAR = 'remeslnik_formular'
+
+// P161 – progress fáze pro lepší UX při čekání
+const FAZE_NACITANI = [
+  'Analyzuji zakázku…',
+  'Hledám ceny materiálů…',
+  'Sestavuji nabídku…',
+  'Dokončuji…',
+]
 
 export default function HomePage() {
   const router = useRouter()
@@ -11,19 +21,59 @@ export default function HomePage() {
   const [popis, setPopis] = useState('')
   const [vymery, setVymery] = useState('')
   const [nacitani, setNacitani] = useState(false)
+  const [fazeIndex, setFazeIndex] = useState(0)
   const [chyba, setChyba] = useState('')
+  const odeslanoRef = useRef(false)
 
   useEffect(() => {
     if (!masProfil()) router.push('/onboarding')
   }, [router])
 
+  // P174 – obnova formuláře po návratu zpět
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(KLIC_FORMULAR)
+      if (!saved) return
+      const { obor: o, popis: p, vymery: v } = JSON.parse(saved)
+      if (o) setObor(o)
+      if (p) setPopis(p)
+      if (v) setVymery(v)
+    } catch {
+      // poškozená cache, ignorovat
+    }
+  }, [])
+
+  // P174 – průběžné ukládání formuláře
+  useEffect(() => {
+    if (!obor && !popis && !vymery) return
+    try {
+      sessionStorage.setItem(KLIC_FORMULAR, JSON.stringify({ obor, popis, vymery }))
+    } catch {
+      // private mode nebo plný storage
+    }
+  }, [obor, popis, vymery])
+
+  // P161 – cyklování fází načítání
+  useEffect(() => {
+    if (!nacitani) { setFazeIndex(0); return }
+    const interval = setInterval(
+      () => setFazeIndex(i => Math.min(i + 1, FAZE_NACITANI.length - 1)),
+      8000
+    )
+    return () => clearInterval(interval)
+  }, [nacitani])
+
   async function odeslat() {
+    // P38 – prevence double submit
+    if (odeslanoRef.current) return
+
     if (!obor) return setChyba('Vyber obor')
     if (!popis.trim()) return setChyba('Napiš popis zakázky')
     if (!vymery.trim()) return setChyba('Zadej výměry — bez nich nelze spočítat nabídku')
 
     setChyba('')
     setNacitani(true)
+    odeslanoRef.current = true
 
     try {
       const odpoved = await fetch('/api/nabidka', {
@@ -32,18 +82,25 @@ export default function HomePage() {
         body: JSON.stringify({ obor, popis, vymery }),
       })
 
+      const data = await odpoved.json()
+
       if (!odpoved.ok) {
-        const { error } = await odpoved.json()
-        throw new Error(error ?? 'Neznámá chyba')
+        throw new Error(data.error ?? 'Neznámá chyba')
       }
 
-      const nabidka = await odpoved.json()
-      sessionStorage.setItem('remeslnik_nabidka', JSON.stringify(nabidka))
+      // P42 – přiřadit číslo nabídky před uložením
+      const nabidka = { ...data, cislo: dalsiCisloNabidky() }
+      ulozNabidku(nabidka)
+
+      // P174 – vymazat cache formuláře po úspěchu
+      sessionStorage.removeItem(KLIC_FORMULAR)
+
       router.push('/nabidka')
     } catch (e) {
       setChyba(e instanceof Error ? e.message : 'Nepodařilo se vygenerovat nabídku')
     } finally {
       setNacitani(false)
+      odeslanoRef.current = false
     }
   }
 
@@ -98,7 +155,7 @@ export default function HomePage() {
         disabled={nacitani}
         className="w-full mt-8 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-semibold py-4 rounded-xl text-base transition-colors"
       >
-        {nacitani ? 'Generuji nabídku...' : 'Vygenerovat nabídku'}
+        {nacitani ? FAZE_NACITANI[fazeIndex] : 'Vygenerovat nabídku'}
       </button>
     </main>
   )

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { nactiProfil, ulozProfil } from '@/lib/storage'
+import { validujICO } from '@/lib/validace'
 import type { Profil } from '@/types'
 
 const PRAZDNY_PROFIL: Profil = {
@@ -17,6 +18,7 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [profil, setProfil] = useState<Profil>(PRAZDNY_PROFIL)
   const [chyba, setChyba] = useState('')
+  const [icoVarovani, setIcoVarovani] = useState('')
 
   useEffect(() => {
     const existujici = nactiProfil()
@@ -25,11 +27,18 @@ export default function OnboardingPage() {
 
   function aktualizuj(pole: keyof Profil, hodnota: string | boolean) {
     setProfil(p => ({ ...p, [pole]: hodnota }))
+    // P37 – live validace IČO
+    if (pole === 'ico' && typeof hodnota === 'string' && hodnota.length === 8) {
+      setIcoVarovani(validujICO(hodnota) ? '' : 'IČO neprošlo kontrolním součtem — zkontroluj číslo')
+    } else if (pole === 'ico') {
+      setIcoVarovani('')
+    }
   }
 
   function ulozit() {
     if (!profil.jmeno.trim()) return setChyba('Zadej jméno nebo název firmy')
     if (!profil.ico.trim()) return setChyba('Zadej IČO')
+    if (profil.ico.length !== 8) return setChyba('IČO musí mít přesně 8 číslic')
     ulozProfil(profil)
     router.push('/')
   }
@@ -49,14 +58,23 @@ export default function OnboardingPage() {
           onChange={v => aktualizuj('jmeno', v)}
           placeholder="Jan Novák / Novák zahradní služby"
         />
-        <FormPole
-          label="IČO"
-          povinne
-          value={profil.ico}
-          onChange={v => aktualizuj('ico', v)}
-          placeholder="12345678"
-          maxLength={8}
-        />
+
+        <div>
+          <FormPole
+            label="IČO"
+            povinne
+            value={profil.ico}
+            onChange={v => aktualizuj('ico', v.replace(/\D/g, '').slice(0, 8))}
+            placeholder="12345678"
+            maxLength={8}
+            inputMode="numeric"
+          />
+          {/* P37 – varování (ne blokování) při neplatném IČO */}
+          {icoVarovani && (
+            <p className="text-amber-600 text-xs mt-1">{icoVarovani}</p>
+          )}
+        </div>
+
         <FormPole
           label="Telefon"
           value={profil.telefon}
@@ -115,9 +133,10 @@ type FormPoleProps = {
   povinne?: boolean
   type?: string
   maxLength?: number
+  inputMode?: React.InputHTMLAttributes<HTMLInputElement>['inputMode']
 }
 
-function FormPole({ label, value, onChange, placeholder, povinne, type = 'text', maxLength }: FormPoleProps) {
+function FormPole({ label, value, onChange, placeholder, povinne, type = 'text', maxLength, inputMode }: FormPoleProps) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -129,6 +148,7 @@ function FormPole({ label, value, onChange, placeholder, povinne, type = 'text',
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
+        inputMode={inputMode}
         className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
       />
     </div>
