@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { OborSelect } from '@/components/OborSelect'
 import { masProfil, ulozNabidku, ulozDoHistorie, dalsiCisloNabidky } from '@/lib/storage'
-import type { TypZakazky } from '@/types'
+import type { Nabidka, TypZakazky } from '@/types'
 
 const KLIC_FORMULAR = 'remeslnik_formular'
 
@@ -84,7 +84,9 @@ export default function HomePage() {
       const data = await odpoved.json()
       if (!odpoved.ok) throw new Error(data.error ?? 'Neznámá chyba')
 
-      const nabidka = {
+      const maVarianty = Array.isArray(data.varianty) && data.varianty.length > 0
+
+      const nabidka: Nabidka = {
         ...data,
         cislo: dalsiCisloNabidky(),
         obor,
@@ -92,12 +94,14 @@ export default function HomePage() {
         typ_zakazky: typZakazky,
         vzdalenost_km: vzdalenostKm || undefined,
         datum: new Date().toISOString(),
+        polozky: data.polozky ?? [],
       }
 
       ulozNabidku(nabidka)
-      ulozDoHistorie(nabidka)
+      // při variantách uložíme do historie až po výběru varianty
+      if (!maVarianty) ulozDoHistorie(nabidka)
       sessionStorage.removeItem(KLIC_FORMULAR)
-      router.push('/nabidka')
+      router.push(maVarianty ? '/nabidka/varianty' : '/nabidka')
     } catch (e) {
       setChyba(e instanceof Error ? e.message : 'Nepodařilo se vygenerovat nabídku')
     } finally {

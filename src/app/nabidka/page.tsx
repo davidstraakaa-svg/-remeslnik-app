@@ -1,24 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
-import { nactiNabidku, ulozNabidku } from '@/lib/storage'
+import { nactiNabidku, ulozNabidku, nactiProfil } from '@/lib/storage'
 import { formatujCenu } from '@/lib/formatters'
-import type { Nabidka, Polozka } from '@/types'
+import type { Nabidka, Polozka, Profil } from '@/types'
 
 export default function NabidkaPage() {
   const router = useRouter()
   const [nabidka, setNabidka] = useState<Nabidka | null>(null)
+  const [profil, setProfil] = useState<Profil | null>(null)
   const [upravy, setUpravy] = useState<Record<number, Partial<Polozka>>>({})
   const [zakaznikJmeno, setZakaznikJmeno] = useState('')
   const [zakaznikAdresa, setZakaznikAdresa] = useState('')
   const [zobrazBreakdown, setZobrazBreakdown] = useState(false)
+  const [zobrazEmail, setZobrazEmail] = useState(false)
+  const [emailAdresa, setEmailAdresa] = useState('')
+  const [emailZprava, setEmailZprava] = useState('')
+  const [emailStav, setEmailStav] = useState<'idle' | 'odesila' | 'ok' | 'chyba'>('idle')
+  const [emailChyba, setEmailChyba] = useState('')
+  const emailOdeslanRef = useRef(false)
 
   useEffect(() => {
     const nactena = nactiNabidku()
     if (!nactena) { router.push('/'); return }
     setNabidka(nactena)
+    setProfil(nactiProfil())
     if (nactena.zakaznik) {
       setZakaznikJmeno(nactena.zakaznik.jmeno)
       setZakaznikAdresa(nactena.zakaznik.adresa ?? '')
@@ -56,6 +64,44 @@ export default function NabidkaPage() {
 
   function sestavPolozky(): Polozka[] {
     return nabidka!.polozky.map((p, i) => ({ ...p, ...upravy[i] }))
+  }
+
+  async function odeslatEmail() {
+    if (emailOdeslanRef.current) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAdresa)) {
+      setEmailChyba('Zadej platnou e-mailovou adresu')
+      return
+    }
+    emailOdeslanRef.current = true
+    setEmailStav('odesila')
+    setEmailChyba('')
+
+    const aktualniNabidka: Nabidka = {
+      ...nabidka!,
+      polozky: sestavPolozky(),
+      zakaznik: zakaznikJmeno.trim() ? { jmeno: zakaznikJmeno.trim(), adresa: zakaznikAdresa.trim() || undefined } : nabidka!.zakaznik,
+    }
+
+    try {
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zakaznikEmail: emailAdresa.trim(),
+          zprava: emailZprava.trim(),
+          nabidka: aktualniNabidka,
+          profil,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Chyba')
+      setEmailStav('ok')
+    } catch (e) {
+      setEmailChyba(e instanceof Error ? e.message : 'Nepodařilo se odeslat e-mail')
+      setEmailStav('chyba')
+    } finally {
+      emailOdeslanRef.current = false
+    }
   }
 
   function prejitNaTisk() {
@@ -162,12 +208,61 @@ export default function NabidkaPage() {
         )}
       </div>
 
-      <button
-        onClick={prejitNaTisk}
-        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 rounded-xl text-base transition-colors"
-      >
-        Stáhnout PDF
-      </button>
+      <div className="flex gap-3">
+        <button
+          onClick={prejitNaTisk}
+          className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 rounded-xl text-base transition-colors"
+        >
+          Stáhnout PDF
+        </button>
+        <button
+          onClick={() => { setZobrazEmail(e => !e); setEmailStav('idle'); setEmailChyba('') }}
+          className="px-5 py-4 rounded-xl border-2 border-orange-200 text-orange-600 hover:border-orange-400 font-semibold text-base transition-colors bg-white"
+          title="Odeslat zákazníkovi e-mailem"
+        >
+          ✉
+        </button>
+      </div>
+
+      {zobrazEmail && (
+        <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Odeslat nabídku zákazníkovi</p>
+
+          {emailStav === 'ok' ? (
+            <div className="text-center py-4">
+              <p className="text-green-600 font-semibold text-sm">E-mail byl odeslán.</p>
+              <button onClick={() => { setEmailStav('idle'); setEmailAdresa(''); setEmailZprava('') }} className="text-xs text-gray-400 mt-2 underline">
+                Odeslat znovu
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="email"
+                value={emailAdresa}
+                onChange={e => setEmailAdresa(e.target.value)}
+                placeholder="E-mail zákazníka"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              />
+              <textarea
+                value={emailZprava}
+                onChange={e => setEmailZprava(e.target.value)}
+                placeholder="Průvodní zpráva (volitelné)"
+                rows={2}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+              />
+              {emailChyba && <p className="text-red-500 text-xs">{emailChyba}</p>}
+              <button
+                onClick={odeslatEmail}
+                disabled={emailStav === 'odesila'}
+                className="w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg text-sm transition-colors"
+              >
+                {emailStav === 'odesila' ? 'Odesílám…' : 'Odeslat e-mail'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </main>
   )
 }

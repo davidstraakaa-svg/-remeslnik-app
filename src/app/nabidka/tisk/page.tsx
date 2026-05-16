@@ -33,196 +33,159 @@ export default function TiskPage() {
   return (
     <>
       <style>{`
-        @media print { body { margin: 0; } .no-print { display: none !important; } }
-        body { font-family: Arial, sans-serif; color: #111; }
+        @media print {
+          body { margin: 0; }
+          .no-print { display: none !important; }
+          @page { margin: 12mm 14mm; }
+        }
+        body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; background: #fff; }
       `}</style>
 
-      <nav className="no-print p-4 bg-gray-100 flex gap-3">
+      <nav className="no-print p-4 bg-gray-100 flex gap-3 items-center">
         <button
           onClick={() => window.print()}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
         >
           Uložit jako PDF
         </button>
         <button
           onClick={() => router.back()}
-          className="bg-white border border-gray-300 px-4 py-2 rounded-lg text-sm"
+          className="bg-white border border-gray-300 hover:border-gray-400 px-4 py-2 rounded-lg text-sm transition-colors"
         >
           Zpět
         </button>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-12 py-10 text-sm">
-        <TiskHlavicka
-          profil={profil}
-          cislo={nabidka.cislo}
-          zakaznik={nabidka.zakaznik}
-          dnes={dnes}
-          platnostDni={PLATNOST_NABIDKY_DNI}
-        />
+      <div className="max-w-3xl mx-auto px-10 py-8 text-sm">
 
-        <hr className="border-t-2 border-orange-500 my-6" />
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            {profil?.logo && (
+              <img src={profil.logo} alt="Logo" style={{ maxHeight: 56, maxWidth: 180, marginBottom: 10 }} />
+            )}
+            {!profil?.logo && profil?.jmeno && (
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#ea580c', marginBottom: 6 }}>
+                {profil.jmeno}
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.7 }}>
+              {profil?.ico && <div>IČO: {profil.ico}</div>}
+              {profil?.telefon && <div>{profil.telefon}</div>}
+              {profil?.email && <div>{profil.email}</div>}
+              {profil && !profil.platce_dph && <div style={{ fontStyle: 'italic' }}>Nejsem plátce DPH</div>}
+            </div>
+          </div>
 
-        <TabulkaPolozek nabidka={nabidka} />
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: '#111' }}>CENOVÁ NABÍDKA</div>
+            {nabidka.cislo && (
+              <div style={{ fontSize: 13, color: '#ea580c', fontWeight: 600, marginTop: 2 }}>č. {nabidka.cislo}</div>
+            )}
+            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6, lineHeight: 1.7 }}>
+              <div>Vystaveno: {formatujDatum(dnes)}</div>
+              <div>Platnost do: {formatujDatum(pridejDny(dnes, PLATNOST_NABIDKY_DNI))}</div>
+              {nabidka.doba_realizace && <div>Doba realizace: {nabidka.doba_realizace}</div>}
+            </div>
+          </div>
+        </div>
 
-        <TiskSouhrn
-          celkemBezDph={celkemBezDph}
-          dph={dph}
-          celkemSDph={celkemSDph}
-          zalovaProcento={ZALOHOVE_PROCENTO}
-          dobaRealizace={nabidka.doba_realizace}
-        />
+        {/* Odběratel */}
+        {nabidka.zakaznik && (
+          <div style={{ background: '#f9fafb', borderRadius: 8, padding: '12px 16px', marginBottom: 24, fontSize: 12 }}>
+            <div style={{ fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5, marginBottom: 4 }}>Odběratel</div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{nabidka.zakaznik.jmeno}</div>
+            {nabidka.zakaznik.adresa && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.adresa}</div>}
+          </div>
+        )}
 
+        {/* Oranžový oddělovač */}
+        <div style={{ height: 3, background: 'linear-gradient(90deg, #ea580c, #fb923c)', borderRadius: 2, marginBottom: 20 }} />
+
+        {/* Tabulka */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
+          <thead>
+            <tr style={{ background: '#1a1a1a' }}>
+              <th style={{ textAlign: 'left', padding: '9px 12px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>Popis</th>
+              <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 48 }}>Mn.</th>
+              <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 44 }}>Jed.</th>
+              <th style={{ textAlign: 'right', padding: '9px 8px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 88 }}>Cena/jed.</th>
+              <th style={{ textAlign: 'right', padding: '9px 12px', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600, width: 88 }}>Celkem</th>
+              <th style={{ textAlign: 'center', padding: '9px 8px', fontSize: 10, color: '#fff', width: 32 }}>●</th>
+            </tr>
+          </thead>
+          <tbody>
+            {nabidka.polozky.map((p, i) => {
+              const conf = JISTOTA_CONFIG[p.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
+              const celkem = Math.round(p.mnozstvi * p.jednotkova_cena)
+              const isEven = i % 2 === 0
+              return (
+                <tr key={i} style={{ background: isEven ? '#ffffff' : '#f9fafb' }}>
+                  <td style={{ padding: '8px 12px', fontSize: 12, borderBottom: '1px solid #f0f0f0' }}>{p.popis}</td>
+                  <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 12, borderBottom: '1px solid #f0f0f0' }}>{p.mnozstvi}</td>
+                  <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 12, borderBottom: '1px solid #f0f0f0', color: '#6b7280' }}>{p.jednotka}</td>
+                  <td style={{ padding: '8px 8px', textAlign: 'right', fontSize: 12, borderBottom: '1px solid #f0f0f0', color: '#6b7280' }}>{formatujCenu(Math.round(p.jednotkova_cena))}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: 12, fontWeight: 700, borderBottom: '1px solid #f0f0f0' }}>{formatujCenu(celkem)}</td>
+                  <td style={{ padding: '8px 8px', textAlign: 'center', fontSize: 14, borderBottom: '1px solid #f0f0f0', color: conf.tiskBarva }}>{conf.tiskSymbol}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        {/* Souhrn */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+          <div style={{ minWidth: 240 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#6b7280', borderTop: '1px solid #e5e7eb' }}>
+              <span>Celkem bez DPH</span>
+              <span style={{ fontWeight: 600, color: '#111' }}>{formatujCenu(Math.round(celkemBezDph))}</span>
+            </div>
+            {dph !== null && celkemSDph !== null && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#9ca3af' }}>
+                  <span>DPH 21 %</span>
+                  <span>{formatujCenu(Math.round(dph))}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 16, fontWeight: 800, borderTop: '2px solid #1a1a1a' }}>
+                  <span>Celkem s DPH</span>
+                  <span style={{ color: '#ea580c' }}>{formatujCenu(Math.round(celkemSDph))}</span>
+                </div>
+              </>
+            )}
+            {(dph === null) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 16, fontWeight: 800, borderTop: '2px solid #1a1a1a' }}>
+                <span>Celkem</span>
+                <span style={{ color: '#ea580c' }}>{formatujCenu(Math.round(celkemBezDph))}</span>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
+              Záloha {ZALOHOVE_PROCENTO} % ({formatujCenu(Math.round(celkemBezDph * ZALOHOVE_PROCENTO / 100))}) před zahájením prací
+            </div>
+          </div>
+        </div>
+
+        {/* Poznámka */}
         {nabidka.poznamka && (
-          <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-900">
+          <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '12px 16px', fontSize: 12, color: '#92400e', marginBottom: 24 }}>
             <strong>Poznámka:</strong> {nabidka.poznamka}
           </div>
         )}
 
-        <TiskPaticka profil={profil} />
-      </div>
-    </>
-  )
-}
-
-function TiskHlavicka({
-  profil, cislo, zakaznik, dnes, platnostDni,
-}: {
-  profil: Profil | null
-  cislo?: string
-  zakaznik?: { jmeno: string; adresa?: string }
-  dnes: Date
-  platnostDni: number
-}) {
-  return (
-    <div>
-      {/* P45 – logo firmy */}
-      {profil?.logo && (
-        <div className="mb-4">
-          <img src={profil.logo} alt="Logo" style={{ maxHeight: 60, maxWidth: 200 }} />
-        </div>
-      )}
-
-      <div className="flex justify-between">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">CENOVÁ NABÍDKA</h1>
-          {cislo && <p className="text-gray-500 text-xs">Číslo nabídky: {cislo}</p>}
-          <p className="text-gray-500 text-xs">Datum vystavení: {formatujDatum(dnes)}</p>
-          <p className="text-gray-500 text-xs">Platnost: {formatujDatum(pridejDny(dnes, platnostDni))}</p>
-        </div>
-
-        <div className="text-xs text-gray-600 flex gap-12">
-          {/* Dodavatel */}
-          <div className="text-right">
-            <p className="font-semibold text-gray-900 text-sm mb-1">Dodavatel</p>
-            {profil ? (
-              <>
-                <p>{profil.jmeno}</p>
-                <p>IČO: {profil.ico}</p>
-                {profil.telefon && <p>{profil.telefon}</p>}
-                {profil.email && <p>{profil.email}</p>}
-                {!profil.platce_dph && <p className="mt-1 italic">Nejsem plátce DPH</p>}
-              </>
-            ) : (
-              <p className="text-gray-400">Profil nevyplněn</p>
-            )}
+        {/* Patička */}
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12, marginTop: 8, fontSize: 10, color: '#9ca3af', lineHeight: 1.8 }}>
+          <div>
+            <span style={{ color: '#16a34a' }}>●</span> ověřená cena (DEK/Hornbach) &nbsp;
+            <span style={{ color: '#ea580c' }}>◐</span> regionální odhad &nbsp;
+            <span style={{ color: '#dc2626' }}>○</span> zkontrolujte před odesláním
           </div>
-
-          {/* P46 – zákazník */}
-          {zakaznik && (
-            <div>
-              <p className="font-semibold text-gray-900 text-sm mb-1">Odběratel</p>
-              <p>{zakaznik.jmeno}</p>
-              {zakaznik.adresa && <p>{zakaznik.adresa}</p>}
-            </div>
+          <div>Záruka na provedené práce: 24 měsíců (§ 2113 a násl. zákona č. 89/2012 Sb.). Na materiál platí záruka výrobce.</div>
+          <div>Záloha splatná 3 pracovní dny před zahájením. Doplatek do 14 dní od předání díla. Platba převodem.</div>
+          <div>Tato nabídka je nezávazným odhadem. Konečná cena může být upřesněna po prohlídce místa realizace.</div>
+          {profil?.ico && (
+            <div>Ověřit dodavatele: ares.gov.cz (IČO: {profil.ico})</div>
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-function TabulkaPolozek({ nabidka }: { nabidka: Nabidka }) {
-  return (
-    <table className="w-full border-collapse mb-6">
-      <thead>
-        <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase">
-          <th className="text-left py-2 px-3">Popis</th>
-          <th className="text-center py-2 px-2 w-14">Mn.</th>
-          <th className="text-center py-2 px-2 w-12">Jed.</th>
-          <th className="text-right py-2 px-2 w-20">Cena/jed.</th>
-          <th className="text-right py-2 px-3 w-20">Celkem</th>
-          <th className="text-center py-2 px-2 w-10">Zdroj</th>
-        </tr>
-      </thead>
-      <tbody>
-        {nabidka.polozky.map((p, i) => {
-          const conf = JISTOTA_CONFIG[p.jistota_ceny] ?? JISTOTA_CONFIG.oranzova
-          const celkem = Math.round(p.mnozstvi * p.jednotkova_cena)
-          return (
-            <tr key={i} className="border-b border-gray-100">
-              <td className="py-2 px-3 text-xs">{p.popis}</td>
-              <td className="py-2 px-2 text-center text-xs">{p.mnozstvi}</td>
-              <td className="py-2 px-2 text-center text-xs">{p.jednotka}</td>
-              <td className="py-2 px-2 text-right text-xs">{formatujCenu(Math.round(p.jednotkova_cena))}</td>
-              <td className="py-2 px-3 text-right text-xs font-semibold">{formatujCenu(celkem)}</td>
-              <td className="py-2 px-2 text-center text-sm" style={{ color: conf.tiskBarva }}>
-                {conf.tiskSymbol}
-              </td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
-  )
-}
-
-function TiskSouhrn({ celkemBezDph, dph, celkemSDph, zalovaProcento, dobaRealizace }: {
-  celkemBezDph: number
-  dph: number | null
-  celkemSDph: number | null
-  zalovaProcento: number
-  dobaRealizace?: string
-}) {
-  const zalova = Math.round(celkemBezDph * zalovaProcento / 100)
-  return (
-    <div className="flex justify-end">
-      <div className="border-t-2 border-gray-900 pt-2 min-w-56">
-        <div className="flex justify-between text-sm mb-1">
-          <span className="text-gray-600">Celkem bez DPH</span>
-          <span>{formatujCenu(Math.round(celkemBezDph))}</span>
-        </div>
-        {dph !== null && celkemSDph !== null && (
-          <>
-            <div className="flex justify-between text-sm mb-1 text-gray-500">
-              <span>DPH 21 %</span>
-              <span>{formatujCenu(Math.round(dph))}</span>
-            </div>
-            <div className="flex justify-between text-base font-bold">
-              <span>Celkem s DPH</span>
-              <span>{formatujCenu(Math.round(celkemSDph))}</span>
-            </div>
-          </>
-        )}
-        <p className="text-xs text-gray-400 mt-2">
-          Záloha {zalovaProcento} % ({formatujCenu(zalova)}) splatná před zahájením prací
-        </p>
-        {dobaRealizace && (
-          <p className="text-xs text-gray-400 mt-1">Odhadovaná doba realizace: {dobaRealizace}</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function TiskPaticka({ profil }: { profil: Profil | null }) {
-  return (
-    <footer className="mt-10 pt-3 border-t border-gray-200 text-xs text-gray-400 space-y-1">
-      <p>Legenda: ● ověřená cena (DEK/Hornbach) &nbsp; ◐ regionální odhad &nbsp; ○ zkontrolujte před odesláním</p>
-      <p>Záruka na provedené práce: 24 měsíců (§ 2113 a násl. zákona č. 89/2012 Sb.). Na materiál platí záruka výrobce.</p>
-      <p>Splatnost zálohy: 3 pracovní dny před zahájením. Doplatek: do 14 dní od předání díla. Platba převodem.</p>
-      <p>Tato nabídka je nezávazným odhadem. Konečná cena může být upřesněna po prohlídce místa realizace.</p>
-      {profil?.ico && <p>Ověřit dodavatele: ares.gov.cz (IČO: {profil.ico})</p>}
-    </footer>
+    </>
   )
 }

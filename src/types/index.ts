@@ -1,5 +1,7 @@
 export type JistotaCeny = 'zelena' | 'oranzova' | 'cervena'
 
+export type TypZakazky = 'rekonstrukce' | 'novostavba'
+
 export type Polozka = {
   popis: string
   mnozstvi: number
@@ -10,7 +12,12 @@ export type Polozka = {
   zdroj_ceny: string
 }
 
-export type TypZakazky = 'rekonstrukce' | 'novostavba'
+// P86 – cenová varianta (ekonomická / standardní / prémiová)
+export type Varianta = {
+  nazev: string
+  popis: string
+  polozky: Polozka[]
+}
 
 export type Nabidka = {
   cislo?: string
@@ -21,6 +28,8 @@ export type Nabidka = {
   datum?: string
   zakaznik?: { jmeno: string; adresa?: string }
   doba_realizace?: string
+  varianty?: Varianta[]
+  aktivni_varianta?: number
   polozky: Polozka[]
   poznamka?: string
 }

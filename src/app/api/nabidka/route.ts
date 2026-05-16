@@ -17,15 +17,12 @@ function sanitizujText(text: string, maxDelka: number): string {
     .slice(0, maxDelka)
 }
 
-// P50/P63 – validace struktury odpovědi z n8n
-function validujSchema(data: unknown): data is { polozky: unknown[]; poznamka?: string } {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'polozky' in data &&
-    Array.isArray((data as { polozky: unknown }).polozky) &&
-    (data as { polozky: unknown[] }).polozky.length > 0
-  )
+// P50/P63 – validace struktury odpovědi z n8n (polozky nebo varianty)
+function validujSchema(data: unknown): data is { polozky?: unknown[]; varianty?: unknown[]; poznamka?: string } {
+  if (typeof data !== 'object' || data === null) return false
+  const d = data as Record<string, unknown>
+  if (Array.isArray(d.varianty) && d.varianty.length > 0) return true
+  return Array.isArray(d.polozky) && d.polozky.length > 0
 }
 
 export async function POST(req: NextRequest) {
