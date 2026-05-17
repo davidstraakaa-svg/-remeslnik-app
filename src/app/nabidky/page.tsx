@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { nactiHistorii, smazZHistorie, ulozNabidku, aktualizujStavVHistorii } from '@/lib/storage'
-import { formatujCenu, formatujDatum } from '@/lib/formatters'
+import { formatujCenu, formatujDatum, platnostInfo } from '@/lib/formatters'
 import { OBORY, PLATNOST_NABIDKY_DNI } from '@/lib/constants'
 import type { Nabidka, StavNabidky } from '@/types'
 
@@ -17,16 +17,6 @@ const STAVY: { id: StavNabidky; label: string; barva: string }[] = [
 type Razeni = 'datum-desc' | 'datum-asc' | 'cena-desc' | 'cena-asc'
 
 const LABEL_OBORU: Record<string, string> = Object.fromEntries(OBORY.map(o => [o.id, o.label]))
-
-function platnostInfo(datum?: string): { text: string; barva: string } | null {
-  if (!datum) return null
-  const expiry = new Date(datum).getTime() + PLATNOST_NABIDKY_DNI * 24 * 60 * 60 * 1000
-  const zbyvaDni = Math.ceil((expiry - Date.now()) / (24 * 60 * 60 * 1000))
-  if (zbyvaDni < 0) return { text: 'Expirovaná', barva: 'text-red-500' }
-  if (zbyvaDni <= 3) return { text: `Platná ${zbyvaDni} d`, barva: 'text-red-500' }
-  if (zbyvaDni <= 7) return { text: `Platná ${zbyvaDni} d`, barva: 'text-amber-500' }
-  return { text: `Platná ${zbyvaDni} d`, barva: 'text-green-600' }
-}
 
 function hodnota(n: Nabidka): number {
   return n.polozky.reduce((s, p) => s + p.mnozstvi * p.jednotkova_cena, 0)
@@ -226,7 +216,7 @@ export default function NabidkyPage() {
             {filtrovane.map(nabidka => {
               const celkem = hodnota(nabidka)
               const datum = nabidka.datum ? new Date(nabidka.datum) : null
-              const platnost = platnostInfo(nabidka.datum)
+              const platnost = platnostInfo(nabidka.datum, PLATNOST_NABIDKY_DNI)
               return (
                 <div key={nabidka.cislo ?? nabidka.datum} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex justify-between items-start mb-1">

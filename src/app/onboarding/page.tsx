@@ -79,8 +79,7 @@ export default function OnboardingPage() {
 
   function ulozit() {
     if (!profil.jmeno.trim()) return setChyba('Zadej jméno nebo název firmy')
-    if (!profil.ico.trim()) return setChyba('Zadej IČO')
-    if (profil.ico.length !== 8) return setChyba('IČO musí mít přesně 8 číslic')
+    if (profil.ico && profil.ico.length !== 8) return setChyba('IČO musí mít přesně 8 číslic — nebo ho nech prázdné')
     ulozProfil(profil)
     router.push('/')
   }
@@ -143,13 +142,15 @@ export default function OnboardingPage() {
         <div>
           <FormPole
             label="IČO"
-            povinne
             value={profil.ico}
             onChange={v => aktualizuj('ico', v.replace(/\D/g, '').slice(0, 8))}
             placeholder="12345678"
             maxLength={8}
             inputMode="numeric"
           />
+          {!profil.ico && (
+            <p className="text-xs text-gray-400 mt-1">Nepovinné — doplníš později. Zobrazí se v PDF.</p>
+          )}
           {icoVarovani && (
             <p className="text-amber-600 text-xs mt-1">{icoVarovani}</p>
           )}

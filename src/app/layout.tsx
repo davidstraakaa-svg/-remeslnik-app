@@ -14,8 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nabídky pro řemeslníky",
-  description: "Vygeneruj profesionální cenovou nabídku za minuty.",
+  title: "Řemeslník — cenové nabídky",
+  description: "Vygeneruj profesionální cenovou nabídku za minuty. Pro řemeslníky.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Řemeslník",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({

@@ -4,22 +4,12 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
 import { nactiNabidku, ulozNabidku, ulozDoHistorie, nactiProfil, nactiZakazniky, ulozSablonu } from '@/lib/storage'
-import { formatujCenu } from '@/lib/formatters'
+import { formatujCenu, platnostInfo } from '@/lib/formatters'
 import { PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
 import type { Nabidka, Polozka, Profil, Sablona } from '@/types'
 
 const NAZVY_VARIANT = ['Ekonomická', 'Standardní', 'Prémiová']
 const BARVY_VARIANT = ['text-emerald-600 bg-emerald-50', 'text-orange-600 bg-orange-50', 'text-violet-600 bg-violet-50']
-
-function platnostInfo(datum?: string): { text: string; barva: string } | null {
-  if (!datum) return null
-  const expiry = new Date(datum).getTime() + PLATNOST_NABIDKY_DNI * 24 * 60 * 60 * 1000
-  const zbyvaDni = Math.ceil((expiry - Date.now()) / (24 * 60 * 60 * 1000))
-  if (zbyvaDni < 0) return { text: 'Nabídka expirovala', barva: 'text-red-600 bg-red-50 border-red-200' }
-  if (zbyvaDni <= 3) return { text: `Platná ještě ${zbyvaDni} den`, barva: 'text-red-600 bg-red-50 border-red-200' }
-  if (zbyvaDni <= 7) return { text: `Platná ještě ${zbyvaDni} dní`, barva: 'text-amber-600 bg-amber-50 border-amber-200' }
-  return { text: `Platná ${zbyvaDni} dní`, barva: 'text-green-700 bg-green-50 border-green-200' }
-}
 
 export default function NabidkaPage() {
   const router = useRouter()
@@ -245,7 +235,7 @@ export default function NabidkaPage() {
   const slevaKc = Math.round(celkemBrutto * slevaProc / 100)
   const celkem = celkemBrutto - slevaKc
   const pocetCervenych = polozky.filter(p => p.jistota_ceny === 'cervena').length
-  const platnost = platnostInfo(nabidka.datum)
+  const platnost = platnostInfo(nabidka.datum, PLATNOST_NABIDKY_DNI)
 
   const breakdown = polozky.reduce<Record<string, number>>((acc, p) => {
     const klic = p.typ?.toLowerCase() ?? 'ostatní'
@@ -304,7 +294,11 @@ export default function NabidkaPage() {
       </header>
 
       {platnost && (
-        <div className={`border rounded-xl px-4 py-2.5 mb-4 text-xs font-medium ${platnost.barva}`}>
+        <div className={`border rounded-xl px-4 py-2.5 mb-4 text-xs font-medium ${
+          platnost.barva.includes('red') ? 'text-red-600 bg-red-50 border-red-200' :
+          platnost.barva.includes('amber') ? 'text-amber-600 bg-amber-50 border-amber-200' :
+          'text-green-700 bg-green-50 border-green-200'
+        }`}>
           {platnost.text}
         </div>
       )}
