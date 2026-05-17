@@ -35,6 +35,7 @@ export type Nabidka = {
   polozky: Polozka[]
   poznamka?: string
   sleva_procento?: number
+  platnost_dni?: number
   stav?: StavNabidky
 }
 

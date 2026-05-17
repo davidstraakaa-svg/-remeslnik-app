@@ -35,6 +35,8 @@ export default function NabidkaPage() {
   const [nazevSablony, setNazevSablony] = useState('')
   const [sablonaUlozena, setSablonaUlozena] = useState(false)
   const [zmenyUlozeny, setZmenyUlozeny] = useState(false)
+  const [zobrazBanner, setZobrazBanner] = useState(false)
+  const [platnostDni, setPlatnostDni] = useState<string>('')
   const [zakaznici, setZakaznici] = useState<{ jmeno: string; adresa?: string; email?: string; telefon?: string }[]>([])
   const [zobrazNavrhy, setZobrazNavrhy] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
@@ -58,6 +60,11 @@ export default function NabidkaPage() {
       setZakaznikTelefon(nactena.zakaznik.telefon ?? '')
     }
     if (nactena.sleva_procento) setSleva(String(nactena.sleva_procento))
+    if (nactena.platnost_dni) setPlatnostDni(String(nactena.platnost_dni))
+    const cerstvaMs = 120_000
+    const jeCerstva = nactena.datum && (Date.now() - new Date(nactena.datum).getTime()) < cerstvaMs
+    const bannerSkryty = sessionStorage.getItem('remeslnik_banner_' + (nactena.cislo ?? ''))
+    if (jeCerstva && !bannerSkryty) setZobrazBanner(true)
   }, [router])
 
   if (!nabidka) return (
@@ -215,6 +222,7 @@ export default function NabidkaPage() {
       polozky: sestavPolozky(),
       zakaznik: sestavZakaznika(),
       sleva_procento: slevaProc || undefined,
+      platnost_dni: parseInt(platnostDni) || undefined,
     }
   }
 
@@ -292,6 +300,23 @@ export default function NabidkaPage() {
           </div>
         </div>
       </header>
+
+      {zobrazBanner && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-3">
+          <div className="flex-1 text-xs text-orange-800 leading-relaxed">
+            <strong>Nabídka je připravena.</strong> Zkontroluj ceny → přidej zákazníka → stáhni PDF nebo pošli přes WhatsApp.
+          </div>
+          <button
+            onClick={() => {
+              sessionStorage.setItem('remeslnik_banner_' + (nabidka.cislo ?? ''), '1')
+              setZobrazBanner(false)
+            }}
+            className="text-orange-400 hover:text-orange-600 text-lg leading-none shrink-0"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {platnost && (
         <div className={`border rounded-xl px-4 py-2.5 mb-4 text-xs font-medium ${
@@ -562,6 +587,18 @@ export default function NabidkaPage() {
             className="w-20 rounded-lg border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-right"
           />
           <span className="text-xs text-gray-400">%</span>
+          <span className="text-xs text-gray-300 mx-1">|</span>
+          <span className="text-xs text-gray-400 shrink-0">Platnost</span>
+          <input
+            type="number"
+            min="1"
+            max="90"
+            value={platnostDni}
+            onChange={e => setPlatnostDni(e.target.value)}
+            placeholder="14"
+            className="w-16 rounded-lg border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-right"
+          />
+          <span className="text-xs text-gray-400">dní</span>
         </div>
         {nabidka.doba_realizace && (
           <p className="text-xs text-gray-400 mt-2">Odhadovaná doba: {nabidka.doba_realizace}</p>

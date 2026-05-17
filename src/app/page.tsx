@@ -25,6 +25,7 @@ export default function HomePage() {
   const [vzdalenost, setVzdalenost] = useState('')
   const [nacitani, setNacitani] = useState(false)
   const [fazeIndex, setFazeIndex] = useState(0)
+  const [elapsedSec, setElapsedSec] = useState(0)
   const [chyba, setChyba] = useState('')
   const [pocetNabidek, setPocetNabidek] = useState(0)
   const [sablony, setSablony] = useState<Sablona[]>([])
@@ -59,12 +60,13 @@ export default function HomePage() {
   }, [obor, typZakazky, popis, vymery, misto, vzdalenost])
 
   useEffect(() => {
-    if (!nacitani) { setFazeIndex(0); return }
-    const interval = setInterval(
+    if (!nacitani) { setFazeIndex(0); setElapsedSec(0); return }
+    const faze = setInterval(
       () => setFazeIndex(i => Math.min(i + 1, FAZE_NACITANI.length - 1)),
       8000
     )
-    return () => clearInterval(interval)
+    const timer = setInterval(() => setElapsedSec(s => s + 1), 1000)
+    return () => { clearInterval(faze); clearInterval(timer) }
   }, [nacitani])
 
   async function odeslat() {
@@ -265,7 +267,7 @@ export default function HomePage() {
         disabled={nacitani}
         className="w-full mt-8 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-semibold py-4 rounded-xl text-base transition-colors"
       >
-        {nacitani ? FAZE_NACITANI[fazeIndex] : 'Vygenerovat nabídku'}
+        {nacitani ? `${FAZE_NACITANI[fazeIndex]} (${elapsedSec} s)` : 'Vygenerovat nabídku'}
       </button>
     </main>
   )

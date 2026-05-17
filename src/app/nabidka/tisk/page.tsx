@@ -30,6 +30,7 @@ export default function TiskPage() {
   if (!nabidka) return null
 
   const dnes = new Date()
+  const platnostDniPDF = nabidka.platnost_dni ?? PLATNOST_NABIDKY_DNI
   const brutto = nabidka.polozky.reduce((sum, p) => sum + p.mnozstvi * p.jednotkova_cena, 0)
   const slevaProc = nabidka.sleva_procento ?? 0
   const slevaKc = Math.round(brutto * slevaProc / 100)
@@ -101,7 +102,7 @@ export default function TiskPage() {
             )}
             <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6, lineHeight: 1.7 }}>
               <div>Vystaveno: {formatujDatum(dnes)}</div>
-              <div>Platnost do: {formatujDatum(pridejDny(dnes, PLATNOST_NABIDKY_DNI))}</div>
+              <div>Platnost do: {formatujDatum(pridejDny(dnes, platnostDniPDF))}</div>
               {nabidka.doba_realizace && <div>Doba realizace: {nabidka.doba_realizace}</div>}
             </div>
           </div>
