@@ -89,8 +89,8 @@ export function smazSablonu(id: string): void {
   localStorage.setItem(KLIC_SABLONY, JSON.stringify(nactiSablony().filter(s => s.id !== id)))
 }
 
-export function nactiZakazniky(): { jmeno: string; adresa?: string; email?: string }[] {
-  const zakaznici = new Map<string, { jmeno: string; adresa?: string; email?: string }>()
+export function nactiZakazniky(): { jmeno: string; adresa?: string; email?: string; telefon?: string }[] {
+  const zakaznici = new Map<string, { jmeno: string; adresa?: string; email?: string; telefon?: string }>()
   nactiHistorii().forEach(n => {
     if (n.zakaznik?.jmeno) zakaznici.set(n.zakaznik.jmeno, n.zakaznik)
   })

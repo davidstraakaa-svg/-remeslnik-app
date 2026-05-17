@@ -29,6 +29,7 @@ export default function NabidkaPage() {
   const [zakaznikJmeno, setZakaznikJmeno] = useState('')
   const [zakaznikAdresa, setZakaznikAdresa] = useState('')
   const [zakaznikEmail, setZakaznikEmail] = useState('')
+  const [zakaznikTelefon, setZakaznikTelefon] = useState('')
   const [smazane, setSmazane] = useState<Set<number>>(new Set())
   const [prilohy, setPrilohy] = useState<Polozka[]>([])
   const [zobrazPridatFormumar, setZobrazPridatFormular] = useState(false)
@@ -43,7 +44,7 @@ export default function NabidkaPage() {
   const [zobrazUlozitSablonu, setZobrazUlozitSablonu] = useState(false)
   const [nazevSablony, setNazevSablony] = useState('')
   const [sablonaUlozena, setSablonaUlozena] = useState(false)
-  const [zakaznici, setZakaznici] = useState<{ jmeno: string; adresa?: string; email?: string }[]>([])
+  const [zakaznici, setZakaznici] = useState<{ jmeno: string; adresa?: string; email?: string; telefon?: string }[]>([])
   const [zobrazNavrhy, setZobrazNavrhy] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
   const [emailAdresa, setEmailAdresa] = useState('')
@@ -63,6 +64,7 @@ export default function NabidkaPage() {
       setZakaznikJmeno(nactena.zakaznik.jmeno)
       setZakaznikAdresa(nactena.zakaznik.adresa ?? '')
       setZakaznikEmail(nactena.zakaznik.email ?? '')
+      setZakaznikTelefon(nactena.zakaznik.telefon ?? '')
     }
     if (nactena.sleva_procento) setSleva(String(nactena.sleva_procento))
   }, [router])
@@ -126,12 +128,12 @@ export default function NabidkaPage() {
     setZobrazPridatFormular(false)
   }
 
-  function kopirovatJakoText() {
+  function sestavTextNabidky(): string {
     const p = sestavPolozky()
     const celkemVal = p.reduce((s, i) => s + i.mnozstvi * i.jednotkova_cena, 0)
     const radky = p.map(i => `• ${i.popis} (${i.mnozstvi} ${i.jednotka} × ${formatujCenu(i.jednotkova_cena)}) = ${formatujCenu(Math.round(i.mnozstvi * i.jednotkova_cena))}`).join('\n')
     const dphRad = profil?.platce_dph ? `DPH 21 %: ${formatujCenu(Math.round(celkemVal * SAZBA_DPH))}\nCELKEM S DPH: ${formatujCenu(Math.round(celkemVal * (1 + SAZBA_DPH)))}\n` : ''
-    const text = [
+    return [
       `CENOVÁ NABÍDKA${nabidka!.cislo ? ` č. ${nabidka!.cislo}` : ''}`,
       profil?.jmeno ?? '',
       '',
@@ -142,8 +144,10 @@ export default function NabidkaPage() {
       `Záloha ${ZALOHOVE_PROCENTO} %: ${formatujCenu(Math.round(celkemVal * ZALOHOVE_PROCENTO / 100))}`,
       nabidka!.doba_realizace ? `Doba realizace: ${nabidka!.doba_realizace}` : '',
     ].filter(Boolean).join('\n')
+  }
 
-    navigator.clipboard.writeText(text).then(() => {
+  function kopirovatJakoText() {
+    navigator.clipboard.writeText(sestavTextNabidky()).then(() => {
       setSkopirovano(true)
       setTimeout(() => setSkopirovano(false), 2000)
     })
@@ -172,6 +176,7 @@ export default function NabidkaPage() {
       jmeno: zakaznikJmeno.trim(),
       adresa: zakaznikAdresa.trim() || undefined,
       email: zakaznikEmail.trim() || undefined,
+      telefon: zakaznikTelefon.trim() || undefined,
     }
   }
 
@@ -287,31 +292,71 @@ export default function NabidkaPage() {
         </div>
       )}
 
-      <div className="space-y-2 mb-3">
-        {nabidka.polozky.map((polozka, i) => {
-          if (smazane.has(i)) return null
+      {(() => {
+        const SKUPINY_PORADI = ['práce', 'materiál', 'odvoz']
+        const SKUPINY_NAZVY: Record<string, string> = { 'práce': 'Práce', 'materiál': 'Materiál', 'odvoz': 'Odvoz', 'ostatní': 'Ostatní' }
+
+        const origItems = nabidka.polozky
+          .map((p, i) => ({ polozka: { ...p, ...upravy[i] }, idx: i, upravena: !!upravy[i] }))
+          .filter(it => !smazane.has(it.idx))
+
+        const vsechnyTypy = new Set([
+          ...origItems.map(it => it.polozka.typ),
+          ...prilohy.map(p => p.typ),
+        ])
+        const pouzitSkupiny = vsechnyTypy.size > 1
+
+        if (!pouzitSkupiny) {
           return (
-            <PolozkaRadek
-              key={i}
-              polozka={{ ...polozka, ...upravy[i] }}
-              upravena={!!upravy[i]}
-              onZmena={(field, hodnota) => upravPolozku(i, field, hodnota)}
-              onObnovit={() => obnovitPuvodni(i)}
-              onSmazat={() => smazatPolozku(i)}
-            />
+            <div className="space-y-2 mb-3">
+              {origItems.map(({ polozka, idx, upravena }) => (
+                <PolozkaRadek key={idx} polozka={polozka} upravena={upravena}
+                  onZmena={(f, h) => upravPolozku(idx, f, h)} onObnovit={() => obnovitPuvodni(idx)} onSmazat={() => smazatPolozku(idx)} />
+              ))}
+              {prilohy.map((polozka, i) => (
+                <PolozkaRadek key={`p-${i}`} polozka={polozka} upravena={false}
+                  onZmena={() => {}} onObnovit={() => {}} onSmazat={() => setPrilohy(prev => prev.filter((_, j) => j !== i))} />
+              ))}
+            </div>
           )
-        })}
-        {prilohy.map((polozka, i) => (
-          <PolozkaRadek
-            key={`priloha-${i}`}
-            polozka={polozka}
-            upravena={false}
-            onZmena={() => {}}
-            onObnovit={() => {}}
-            onSmazat={() => setPrilohy(prev => prev.filter((_, j) => j !== i))}
-          />
-        ))}
-      </div>
+        }
+
+        const skupMap = new Map<string, { orig: typeof origItems; pril: typeof prilohy & { _i: number }[] }>()
+        const getSkup = (typ: string) => SKUPINY_PORADI.includes(typ) ? typ : 'ostatní'
+        for (const it of origItems) {
+          const k = getSkup(it.polozka.typ)
+          if (!skupMap.has(k)) skupMap.set(k, { orig: [], pril: [] })
+          skupMap.get(k)!.orig.push(it)
+        }
+        prilohy.forEach((p, i) => {
+          const k = getSkup(p.typ)
+          if (!skupMap.has(k)) skupMap.set(k, { orig: [], pril: [] })
+          ;(skupMap.get(k)!.pril as Array<Polozka & { _i: number }>).push({ ...p, _i: i })
+        })
+
+        return (
+          <div className="mb-3 space-y-3">
+            {([...SKUPINY_PORADI, 'ostatní'] as string[]).filter(k => skupMap.has(k)).map(skupina => {
+              const { orig, pril } = skupMap.get(skupina)!
+              return (
+                <div key={skupina}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase px-1 mb-1.5 tracking-wide">{SKUPINY_NAZVY[skupina]}</p>
+                  <div className="space-y-2">
+                    {orig.map(({ polozka, idx, upravena }) => (
+                      <PolozkaRadek key={idx} polozka={polozka} upravena={upravena}
+                        onZmena={(f, h) => upravPolozku(idx, f, h)} onObnovit={() => obnovitPuvodni(idx)} onSmazat={() => smazatPolozku(idx)} />
+                    ))}
+                    {(pril as Array<Polozka & { _i: number }>).map(p => (
+                      <PolozkaRadek key={`p-${p._i}`} polozka={p} upravena={false}
+                        onZmena={() => {}} onObnovit={() => {}} onSmazat={() => setPrilohy(prev => prev.filter((_, j) => j !== p._i))} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {zobrazPridatFormumar ? (
         <div className="bg-white rounded-xl border border-orange-200 p-4 mb-4 space-y-3">
@@ -398,6 +443,7 @@ export default function NabidkaPage() {
                       setZakaznikJmeno(z.jmeno)
                       setZakaznikAdresa(z.adresa ?? '')
                       setZakaznikEmail(z.email ?? '')
+                      setZakaznikTelefon(z.telefon ?? '')
                       if (!emailAdresa && z.email) setEmailAdresa(z.email)
                       setZobrazNavrhy(false)
                     }}
@@ -426,6 +472,13 @@ export default function NabidkaPage() {
             placeholder="E-mail zákazníka"
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
           />
+          <input
+            type="tel"
+            value={zakaznikTelefon}
+            onChange={e => setZakaznikTelefon(e.target.value)}
+            placeholder="Telefon zákazníka"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+          />
         </div>
       </div>
 
@@ -449,9 +502,16 @@ export default function NabidkaPage() {
             <button
               onClick={kopirovatJakoText}
               className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-              title="Kopírovat jako text (WhatsApp)"
+              title="Kopírovat jako text"
             >
               {skopirovano ? '✓ Zkopírováno' : 'Kopírovat'}
+            </button>
+            <button
+              onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(sestavTextNabidky())}`, '_blank')}
+              className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
+              title="Sdílet přes WhatsApp"
+            >
+              WhatsApp
             </button>
             <span className="text-xl font-bold text-gray-900">{formatujCenu(Math.round(celkem))}</span>
           </div>

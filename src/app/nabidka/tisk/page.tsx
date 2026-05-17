@@ -114,6 +114,7 @@ export default function TiskPage() {
             <div style={{ fontWeight: 600, fontSize: 13 }}>{nabidka.zakaznik.jmeno}</div>
             {nabidka.zakaznik.adresa && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.adresa}</div>}
             {nabidka.zakaznik.email && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.email}</div>}
+            {nabidka.zakaznik.telefon && <div style={{ color: '#6b7280' }}>{nabidka.zakaznik.telefon}</div>}
           </div>
         )}
 
