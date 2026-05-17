@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { PolozkaRadek } from '@/components/PolozkaRadek'
-import { nactiNabidku, ulozNabidku, nactiProfil, nactiZakazniky, ulozSablonu } from '@/lib/storage'
+import { nactiNabidku, ulozNabidku, ulozDoHistorie, nactiProfil, nactiZakazniky, ulozSablonu } from '@/lib/storage'
 import { formatujCenu } from '@/lib/formatters'
 import { PLATNOST_NABIDKY_DNI, SAZBA_DPH, ZALOHOVE_PROCENTO } from '@/lib/constants'
 import type { Nabidka, Polozka, Profil, Sablona } from '@/types'
@@ -44,6 +44,7 @@ export default function NabidkaPage() {
   const [zobrazUlozitSablonu, setZobrazUlozitSablonu] = useState(false)
   const [nazevSablony, setNazevSablony] = useState('')
   const [sablonaUlozena, setSablonaUlozena] = useState(false)
+  const [zmenyUlozeny, setZmenyUlozeny] = useState(false)
   const [zakaznici, setZakaznici] = useState<{ jmeno: string; adresa?: string; email?: string; telefon?: string }[]>([])
   const [zobrazNavrhy, setZobrazNavrhy] = useState(false)
   const [zobrazEmail, setZobrazEmail] = useState(false)
@@ -218,14 +219,23 @@ export default function NabidkaPage() {
     }
   }
 
-  function prejitNaTisk() {
-    const aktualniNabidka: Nabidka = {
+  function sestavAktualniNabidku(): Nabidka {
+    return {
       ...nabidka,
       polozky: sestavPolozky(),
       zakaznik: sestavZakaznika(),
       sleva_procento: slevaProc || undefined,
     }
+  }
+
+  function ulozitZmeny(aktualniNabidka: Nabidka) {
     ulozNabidku(aktualniNabidka)
+    if (aktualniNabidka.cislo) ulozDoHistorie(aktualniNabidka)
+  }
+
+  function prejitNaTisk() {
+    const aktualniNabidka = sestavAktualniNabidku()
+    ulozitZmeny(aktualniNabidka)
     router.push('/nabidka/tisk')
   }
 
@@ -249,9 +259,23 @@ export default function NabidkaPage() {
         <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-600 text-sm">
           ← Zpět
         </button>
+        {nabidka.cislo && (
+          <button
+            onClick={() => {
+              ulozitZmeny(sestavAktualniNabidku())
+              setZmenyUlozeny(true)
+              setTimeout(() => setZmenyUlozeny(false), 2000)
+            }}
+            className="text-xs text-gray-400 hover:text-orange-500 transition-colors"
+          >
+            Uložit
+          </button>
+        )}
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Cenová nabídka</h1>
-          {sablonaUlozena && <p className="text-xs text-green-600 mt-0.5">Šablona uložena</p>}
+          {(sablonaUlozena || zmenyUlozeny) && (
+            <p className="text-xs text-green-600 mt-0.5">{sablonaUlozena ? 'Šablona uložena' : 'Změny uloženy'}</p>
+          )}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {nabidka.cislo && <p className="text-xs text-gray-400">č. {nabidka.cislo}</p>}
             <button onClick={() => setZobrazUlozitSablonu(s => !s)} className="text-xs text-gray-400 hover:text-orange-500 mt-0.5 block">

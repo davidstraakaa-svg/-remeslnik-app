@@ -57,4 +57,5 @@ export type Profil = {
   cislo_uctu?: string
   zalohove_procento?: number
   splatnost_dni?: number
+  web?: string
 }

@@ -281,6 +281,9 @@ export default function TiskPage() {
           {profil?.ico && (
             <div>Ověřit dodavatele: ares.gov.cz (IČO: {profil.ico})</div>
           )}
+          {profil?.web && (
+            <div>{profil.web}</div>
+          )}
         </div>
       </div>
     </>

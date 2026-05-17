@@ -153,6 +153,16 @@ export default function OnboardingPage() {
           {icoVarovani && (
             <p className="text-amber-600 text-xs mt-1">{icoVarovani}</p>
           )}
+          {profil.ico.length === 8 && !icoVarovani && (
+            <a
+              href={`https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${profil.ico}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-orange-600 hover:underline mt-1 inline-block"
+            >
+              Ověřit v ARES →
+            </a>
+          )}
         </div>
 
         <FormPole
@@ -175,6 +185,12 @@ export default function OnboardingPage() {
           value={profil.cislo_uctu ?? ''}
           onChange={v => aktualizuj('cislo_uctu', v)}
           placeholder="123456789/0800"
+        />
+        <FormPole
+          label="Web / Facebook"
+          value={profil.web ?? ''}
+          onChange={v => aktualizuj('web', v)}
+          placeholder="www.novak-zahrada.cz"
         />
 
         <div className="grid grid-cols-2 gap-3">
